@@ -66,6 +66,8 @@
 1. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
+   # OR use the development script
+   ./dev.sh install
    ```
 
 2. **Set up PostgreSQL and Redis locally**
@@ -76,20 +78,64 @@
    # Edit .env with your local database and Redis URLs
    ```
 
-4. **Run Flask development server:**
+4. **Initialize database:**
+   ```bash
+   python init_db.py
+   # OR use the development script
+   ./dev.sh init-db
+   ```
+
+5. **Run Flask development server:**
    ```bash
    python run.py
+   # OR use the development script
+   ./dev.sh flask
    ```
 
-5. **Run Celery worker (separate terminal):**
+6. **Run Celery worker (separate terminal):**
    ```bash
    celery -A tasks.celery worker --loglevel=info
+   # OR use the development script
+   ./dev.sh celery
    ```
 
-6. **Run Celery beat scheduler (separate terminal):**
+7. **Run Celery beat scheduler (separate terminal):**
    ```bash
    celery -A scheduler.celery_app beat --loglevel=info
+   # OR use the development script
+   ./dev.sh beat
    ```
+
+8. **Optional - Run Flower dashboard:**
+   ```bash
+   ./dev.sh flower
+   ```
+
+### Development Helper Script
+
+The project includes a `dev.sh` script for easier development:
+
+```bash
+# Start all services with Docker
+./dev.sh docker
+
+# Start services including Flower dashboard
+./dev.sh docker-flower
+
+# Run individual services for development
+./dev.sh flask          # Flask development server
+./dev.sh celery         # Celery worker
+./dev.sh beat           # Celery beat scheduler
+./dev.sh flower         # Flower dashboard
+
+# Utility commands
+./dev.sh test           # Run setup tests
+./dev.sh init-db        # Initialize database
+./dev.sh install        # Install dependencies
+./dev.sh stop           # Stop Docker services
+./dev.sh logs           # Show Docker logs
+./dev.sh help           # Show all commands
+```
 
 ## API Endpoints
 
@@ -172,6 +218,11 @@ docker-compose up -d --scale celery_worker=3
 ### Testing API
 
 ```bash
+# Test setup and configuration
+python test_setup.py
+# OR
+./dev.sh test
+
 # Health check
 curl http://localhost:5000/api/health
 
