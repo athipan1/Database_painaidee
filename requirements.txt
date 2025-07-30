@@ -1,0 +1,12 @@
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+SQLAlchemy==2.0.23
+psycopg2-binary==2.9.7
+celery==5.3.4
+redis==5.0.1
+python-dotenv==1.0.0
+requests==2.31.0
+flower==2.0.1
+gunicorn==21.2.0
+alembic==1.12.1
+Flask-Migrate==4.0.5
