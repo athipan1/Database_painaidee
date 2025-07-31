@@ -1,8 +1,6 @@
 from flask import Blueprint, jsonify, current_app
 import requests
 from app.models import db, Attraction
-from app.utils.fetch import fetch_json_with_retry
-from sqlalchemy.exc import IntegrityError
 
 attractions_bp = Blueprint('attractions', __name__)
 
@@ -27,53 +25,34 @@ def get_attractions():
 
 @attractions_bp.route('/attractions/sync', methods=['POST'])
 def sync_attractions():
-    """Manually trigger attraction data sync from external API."""
+    """Manually trigger attraction data sync from external API using ETL pipeline."""
     try:
-        # Fetch data from external API using retry mechanism
+        # Get configuration
         api_url = current_app.config['EXTERNAL_API_URL']
         timeout = current_app.config['API_TIMEOUT']
         
-        external_data = fetch_json_with_retry(api_url, timeout=timeout)
+        # Import here to avoid circular imports
+        from etl_orchestrator import ETLOrchestrator
         
-        # Process and save data
-        saved_count = 0
-        skipped_count = 0
-        
-        for item in external_data:
-            # Check if attraction already exists
-            existing = Attraction.query.filter_by(external_id=item.get('id')).first()
-            
-            if existing:
-                skipped_count += 1
-                continue
-                
-            # Create new attraction
-            try:
-                attraction = Attraction.create_from_external_data(item)
-                db.session.add(attraction)
-                db.session.commit()
-                saved_count += 1
-            except IntegrityError:
-                db.session.rollback()
-                skipped_count += 1
-                current_app.logger.warning(f"Duplicate attraction with external_id: {item.get('id')}")
+        # Run ETL process using orchestrator
+        result = ETLOrchestrator.run_external_api_etl(api_url, timeout)
         
         return jsonify({
             'success': True,
-            'message': 'Sync completed',
-            'saved': saved_count,
-            'skipped': skipped_count,
-            'total_processed': len(external_data)
+            'message': 'ETL sync completed',
+            'saved': result['saved'],
+            'skipped': result['skipped'],
+            'total_processed': result['total_processed']
         })
         
     except requests.RequestException as e:
-        current_app.logger.error(f"Error fetching external data after retries: {str(e)}")
+        current_app.logger.error(f"Error in ETL process after retries: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Failed to fetch external data after multiple retry attempts'
         }), 500
     except Exception as e:
-        current_app.logger.error(f"Error syncing attractions: {str(e)}")
+        current_app.logger.error(f"Error in ETL sync: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Failed to sync attractions'
