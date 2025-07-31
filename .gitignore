@@ -81,3 +81,7 @@ migrations/versions/*.py
 *.tmp
 *.temp
 /tmp/
+
+# Demo and manual test files
+demo_*.py
+manual_test.py
