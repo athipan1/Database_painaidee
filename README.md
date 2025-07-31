@@ -233,6 +233,62 @@ curl http://localhost:5000/api/attractions
 curl -X POST http://localhost:5000/api/attractions/sync
 ```
 
+## CI/CD Pipeline
+
+The repository includes a comprehensive CI/CD pipeline using GitHub Actions that automatically builds and pushes Docker images.
+
+### Workflow Triggers
+
+The workflow runs automatically on:
+- **Push to main branch**: Builds and pushes images with `latest` tag and commit SHA
+- **Pull Requests**: Builds images for testing (without pushing to registry)
+
+### Docker Registry Support
+
+**Default**: GitHub Container Registry (`ghcr.io`)
+- Images are automatically pushed to `ghcr.io/athipan1/database_painaidee`
+- Uses GitHub token for authentication (no additional setup required)
+
+**Alternative**: Docker Hub Support
+- Set repository secrets to use Docker Hub:
+  - `DOCKER_REGISTRY`: `docker.io` (or leave empty for Docker Hub)
+  - `DOCKER_USERNAME`: Your Docker Hub username
+  - `DOCKER_PASSWORD`: Your Docker Hub password or access token
+
+### Image Tags
+
+The CI/CD pipeline creates multiple tags for each image:
+- `latest`: Latest build from main branch
+- `main-<commit-sha>`: Specific commit from main branch
+- `pr-<pr-number>`: Pull request builds (testing only, not pushed)
+
+### Multi-Platform Support
+
+Images are built for multiple architectures:
+- `linux/amd64` (Intel/AMD x64)
+- `linux/arm64` (ARM64, including Apple Silicon)
+
+### Workflow File
+
+The workflow is defined in `.github/workflows/docker-build-push.yml` and includes:
+- Docker Buildx setup for multi-platform builds
+- Registry authentication
+- Intelligent caching for faster builds
+- Metadata extraction for proper tagging
+
+### Usage Examples
+
+```bash
+# Pull latest image from GitHub Container Registry
+docker pull ghcr.io/athipan1/database_painaidee:latest
+
+# Pull specific commit
+docker pull ghcr.io/athipan1/database_painaidee:main-abc1234
+
+# Run the container
+docker run -p 5000:5000 ghcr.io/athipan1/database_painaidee:latest
+```
+
 ## Production Deployment
 
 1. **Update environment variables** for production
