@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, current_app
 import requests
 from app.models import db, Attraction
+from app.utils.fetch import fetch_json_with_retry
 from sqlalchemy.exc import IntegrityError
 
 attractions_bp = Blueprint('attractions', __name__)
@@ -28,14 +29,11 @@ def get_attractions():
 def sync_attractions():
     """Manually trigger attraction data sync from external API."""
     try:
-        # Fetch data from external API
+        # Fetch data from external API using retry mechanism
         api_url = current_app.config['EXTERNAL_API_URL']
         timeout = current_app.config['API_TIMEOUT']
         
-        response = requests.get(api_url, timeout=timeout)
-        response.raise_for_status()
-        
-        external_data = response.json()
+        external_data = fetch_json_with_retry(api_url, timeout=timeout)
         
         # Process and save data
         saved_count = 0
@@ -69,10 +67,10 @@ def sync_attractions():
         })
         
     except requests.RequestException as e:
-        current_app.logger.error(f"Error fetching external data: {str(e)}")
+        current_app.logger.error(f"Error fetching external data after retries: {str(e)}")
         return jsonify({
             'success': False,
-            'error': 'Failed to fetch external data'
+            'error': 'Failed to fetch external data after multiple retry attempts'
         }), 500
     except Exception as e:
         current_app.logger.error(f"Error syncing attractions: {str(e)}")

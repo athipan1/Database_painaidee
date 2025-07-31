@@ -1,8 +1,9 @@
-import requests
 import logging
 from app import create_app, create_celery_app
 from app.models import db, Attraction
+from app.utils.fetch import fetch_json_with_retry
 from sqlalchemy.exc import IntegrityError
+import requests
 
 # Create Flask and Celery apps
 app = create_app()
@@ -18,15 +19,12 @@ def fetch_attractions_task(self):
     """Background task to fetch attractions from external API."""
     try:
         with app.app_context():
-            # Fetch data from external API
+            # Fetch data from external API using retry mechanism
             api_url = app.config['EXTERNAL_API_URL']
             timeout = app.config['API_TIMEOUT']
             
             logger.info(f"Fetching data from: {api_url}")
-            response = requests.get(api_url, timeout=timeout)
-            response.raise_for_status()
-            
-            external_data = response.json()
+            external_data = fetch_json_with_retry(api_url, timeout=timeout)
             logger.info(f"Fetched {len(external_data)} items from external API")
             
             # Process and save data
@@ -67,8 +65,10 @@ def fetch_attractions_task(self):
             return result
             
     except requests.RequestException as e:
-        logger.error(f"Error fetching external data: {str(e)}")
-        raise self.retry(countdown=60, max_retries=3)
+        logger.error(f"Error fetching external data after retries: {str(e)}")
+        # The fetch_json_with_retry already handles retries, so if we get here,
+        # all retries have been exhausted. We can still use Celery's retry as a fallback.
+        raise self.retry(countdown=300, max_retries=2)  # Wait 5 minutes, try 2 more times
     except Exception as e:
         logger.error(f"Error in fetch_attractions_task: {str(e)}")
         raise
