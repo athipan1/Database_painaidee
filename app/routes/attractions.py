@@ -31,18 +31,32 @@ def sync_attractions():
         api_url = current_app.config['EXTERNAL_API_URL']
         timeout = current_app.config['API_TIMEOUT']
         
+        # Get pagination settings
+        enable_pagination = current_app.config.get('PAGINATION_ENABLED', True)
+        page_size = current_app.config.get('PAGINATION_PAGE_SIZE', 20)
+        max_pages = current_app.config.get('PAGINATION_MAX_PAGES', 100)
+        
         # Import here to avoid circular imports
         from etl_orchestrator import ETLOrchestrator
         
-        # Run ETL process using orchestrator
-        result = ETLOrchestrator.run_external_api_etl(api_url, timeout)
+        # Run ETL process using orchestrator with pagination
+        result = ETLOrchestrator.run_external_api_etl(
+            api_url=api_url,
+            timeout=timeout,
+            enable_pagination=enable_pagination,
+            page_size=page_size,
+            max_pages=max_pages,
+            use_memory_efficient=enable_pagination  # Use memory efficient mode when pagination is enabled
+        )
         
         return jsonify({
             'success': True,
             'message': 'ETL sync completed',
             'saved': result['saved'],
             'skipped': result['skipped'],
-            'total_processed': result['total_processed']
+            'total_processed': result['total_processed'],
+            'pagination_used': result.get('pagination_used', False),
+            'memory_efficient': result.get('memory_efficient', False)
         })
         
     except requests.RequestException as e:

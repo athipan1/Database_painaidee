@@ -21,10 +21,23 @@ def fetch_attractions_task(self):
             api_url = app.config['EXTERNAL_API_URL']
             timeout = app.config['API_TIMEOUT']
             
-            logger.info(f"Starting ETL process for external API: {api_url}")
+            # Get pagination settings
+            enable_pagination = app.config.get('PAGINATION_ENABLED', True)
+            page_size = app.config.get('PAGINATION_PAGE_SIZE', 20)
+            max_pages = app.config.get('PAGINATION_MAX_PAGES', 100)
             
-            # Run ETL process using orchestrator
-            result = ETLOrchestrator.run_external_api_etl(api_url, timeout)
+            logger.info(f"Starting ETL process for external API: {api_url}")
+            logger.info(f"Pagination settings: enabled={enable_pagination}, page_size={page_size}, max_pages={max_pages}")
+            
+            # Run ETL process using orchestrator with pagination
+            result = ETLOrchestrator.run_external_api_etl(
+                api_url=api_url,
+                timeout=timeout,
+                enable_pagination=enable_pagination,
+                page_size=page_size,
+                max_pages=max_pages,
+                use_memory_efficient=enable_pagination  # Use memory efficient mode when pagination is enabled
+            )
             
             logger.info(f"ETL task completed: {result}")
             return result
