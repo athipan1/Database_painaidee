@@ -44,7 +44,6 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr,prefix=pr-
-            type=sha,prefix={{branch}},enable={{is_default_branch}}
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
 
