@@ -29,6 +29,18 @@ services:
       timeout: 10s
       retries: 3
 
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+    profiles:
+      - loadbalancer
+
   # Flask Web Application
   web:
     build: .
@@ -40,6 +52,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/0
+      - BACKUP_DIR=/app/backups
     depends_on:
       db:
         condition: service_healthy
@@ -47,15 +60,17 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-    command: ["python", "-m", "flask", "run", "--host", "0.0.0.0", "--port", "5000"]
+      - backup_data:/app/backups
+    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "run:app"]
 
-  # Celery Worker
+  # Celery Worker for General Tasks
   celery_worker:
     build: .
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/painaidee_db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - BACKUP_DIR=/app/backups
     depends_on:
       db:
         condition: service_healthy
@@ -63,7 +78,48 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-    command: ["celery", "-A", "tasks.celery", "worker", "--loglevel=info"]
+      - backup_data:/app/backups
+    command: ["celery", "-A", "tasks.celery", "worker", "--loglevel=info", "--queues=default", "--concurrency=2"]
+
+  # Celery Worker for Heavy Tasks (ETL, Geocoding)
+  celery_worker_heavy:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/painaidee_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - BACKUP_DIR=/app/backups
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - backup_data:/app/backups
+    command: ["celery", "-A", "tasks.celery", "worker", "--loglevel=info", "--queues=heavy", "--concurrency=1"]
+    profiles:
+      - scaling
+
+  # Celery Worker for Light Tasks (Cleanup, Backup)  
+  celery_worker_light:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/painaidee_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - BACKUP_DIR=/app/backups
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - backup_data:/app/backups
+    command: ["celery", "-A", "tasks.celery", "worker", "--loglevel=info", "--queues=light", "--concurrency=4"]
+    profiles:
+      - scaling
 
   # Celery Beat Scheduler
   celery_beat:
@@ -72,6 +128,7 @@ services:
       - DATABASE_URL=postgresql://user:password@db:5432/painaidee_db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - BACKUP_DIR=/app/backups
     depends_on:
       db:
         condition: service_healthy
@@ -79,6 +136,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
+      - backup_data:/app/backups
     command: ["celery", "-A", "scheduler.celery_app", "beat", "--loglevel=info"]
 
   # Flower Dashboard (Optional - can be enabled later)
@@ -100,3 +158,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  backup_data:
