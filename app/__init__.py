@@ -1,0 +1,71 @@
+import os
+from flask import Flask
+from flask_migrate import Migrate
+from dotenv import load_dotenv
+
+from app.config import config
+from app.models import db
+
+# Load environment variables
+load_dotenv()
+
+migrate = Migrate()
+
+
+def create_app(config_name=None):
+    """Application factory pattern."""
+    if config_name is None:
+        config_name = os.environ.get('FLASK_ENV', 'development')
+    
+    app = Flask(__name__)
+    app.config.from_object(config[config_name])
+    
+    # Initialize extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+    
+    # Register blueprints
+    from app.routes.attractions import attractions_bp
+    app.register_blueprint(attractions_bp, url_prefix='/api')
+    
+    # Add a simple root route
+    @app.route('/')
+    def index():
+        return {
+            'message': 'Painaidee Database API',
+            'version': '1.0.0',
+            'endpoints': {
+                'health': '/api/health',
+                'attractions': '/api/attractions',
+                'sync': '/api/attractions/sync'
+            }
+        }
+    
+    # Create tables
+    with app.app_context():
+        db.create_all()
+    
+    return app
+
+
+def create_celery_app(app=None):
+    """Create Celery app."""
+    app = app or create_app()
+    
+    from celery import Celery
+    
+    celery = Celery(
+        app.import_name,
+        broker=app.config['CELERY_BROKER_URL'],
+        backend=app.config['CELERY_RESULT_BACKEND']
+    )
+    celery.conf.update(app.config)
+    
+    class ContextTask(celery.Task):
+        """Make celery tasks work with Flask app context."""
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+    
+    celery.Task = ContextTask
+    return celery
