@@ -48,14 +48,20 @@ def fetch_attractions_task(self):
             logger.info(f"Starting ETL process for external API: {api_url}")
             logger.info(f"Pagination settings: enabled={enable_pagination}, page_size={page_size}, max_pages={max_pages}")
             
-            # Run ETL process using orchestrator with pagination
+            # Get geocoding settings
+            enable_geocoding = app.config.get('USE_GOOGLE_GEOCODING', False)
+            google_api_key = app.config.get('GOOGLE_GEOCODING_API_KEY')
+            
+            # Run ETL process using orchestrator with pagination and geocoding
             result = ETLOrchestrator.run_external_api_etl(
                 api_url=api_url,
                 timeout=timeout,
                 enable_pagination=enable_pagination,
                 page_size=page_size,
                 max_pages=max_pages,
-                use_memory_efficient=enable_pagination  # Use memory efficient mode when pagination is enabled
+                use_memory_efficient=enable_pagination,  # Use memory efficient mode when pagination is enabled
+                enable_geocoding=enable_geocoding,
+                google_api_key=google_api_key
             )
             
             # Calculate processing time
