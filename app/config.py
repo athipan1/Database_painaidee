@@ -26,6 +26,11 @@ class Config:
     # External API
     EXTERNAL_API_URL = os.environ.get('EXTERNAL_API_URL') or 'https://jsonplaceholder.typicode.com/posts'
     API_TIMEOUT = int(os.environ.get('API_TIMEOUT', 30))
+    
+    # Pagination settings
+    PAGINATION_ENABLED = os.environ.get('PAGINATION_ENABLED', 'true').lower() == 'true'
+    PAGINATION_PAGE_SIZE = int(os.environ.get('PAGINATION_PAGE_SIZE', 20))
+    PAGINATION_MAX_PAGES = int(os.environ.get('PAGINATION_MAX_PAGES', 100))  # Safety limit
 
 
 class DevelopmentConfig(Config):
