@@ -1,25 +1,27 @@
 """
 Attraction data loader.
-Handles duplicate checking and database insertion.
+Handles duplicate checking and database insertion with enhanced features.
 """
 import logging
 from typing import List, Dict, Any
 from sqlalchemy.exc import IntegrityError
-from app.models import db, Attraction
+from app.models import db, Attraction, SyncLog
+from app.utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
 
 
 class AttractionLoader:
-    """Loader for attraction data with duplicate checking."""
+    """Enhanced loader for attraction data with multiple duplicate checking methods."""
     
     @staticmethod
-    def load_attractions(attractions: List[Attraction]) -> Dict[str, int]:
+    def load_attractions(attractions: List[Attraction], sync_log: SyncLog = None) -> Dict[str, int]:
         """
-        Load attractions into the database with duplicate checking.
+        Load attractions into the database with enhanced duplicate checking.
         
         Args:
             attractions: List of Attraction objects to load
+            sync_log: Optional sync log for tracking progress
             
         Returns:
             Dictionary with counts of saved and skipped items
@@ -28,15 +30,25 @@ class AttractionLoader:
         
         saved_count = 0
         skipped_count = 0
+        errors = []
         
         for attraction in attractions:
             try:
-                # Check if attraction already exists
-                existing = Attraction.query.filter_by(external_id=attraction.external_id).first()
+                # Enhanced duplicate checking: check both external_id and content_hash
+                existing_by_id = None
+                existing_by_hash = None
                 
-                if existing:
+                if attraction.external_id:
+                    existing_by_id = Attraction.find_duplicate_by_external_id(attraction.external_id)
+                
+                if attraction.content_hash:
+                    existing_by_hash = Attraction.find_duplicate_by_hash(attraction.content_hash)
+                
+                # Skip if duplicate found by either method
+                if existing_by_id or existing_by_hash:
                     skipped_count += 1
-                    logger.debug(f"Skipping duplicate attraction with external_id: {attraction.external_id}")
+                    duplicate_type = "external_id" if existing_by_id else "content_hash"
+                    logger.debug(f"Skipping duplicate attraction (by {duplicate_type}): {attraction.external_id}")
                     continue
                 
                 # Save new attraction
@@ -44,26 +56,42 @@ class AttractionLoader:
                 db.session.commit()
                 saved_count += 1
                 
-            except IntegrityError:
+                # Update sync progress cache if provided
+                if sync_log:
+                    progress_data = {
+                        'processed': saved_count + skipped_count,
+                        'saved': saved_count,
+                        'skipped': skipped_count,
+                        'last_processed_id': attraction.external_id
+                    }
+                    cache_manager.cache_sync_progress(str(sync_log.id), progress_data)
+                
+            except IntegrityError as e:
                 db.session.rollback()
                 skipped_count += 1
-                logger.warning(f"Duplicate attraction with external_id: {attraction.external_id}")
+                error_msg = f"Integrity error for attraction {attraction.external_id}: {str(e)}"
+                logger.warning(error_msg)
+                errors.append(error_msg)
+                
             except Exception as e:
                 db.session.rollback()
                 skipped_count += 1
-                logger.error(f"Error saving attraction {attraction.external_id}: {str(e)}")
+                error_msg = f"Error saving attraction {attraction.external_id}: {str(e)}"
+                logger.error(error_msg)
+                errors.append(error_msg)
         
         result = {
             'saved': saved_count,
             'skipped': skipped_count,
-            'total_processed': len(attractions)
+            'total_processed': len(attractions),
+            'errors': errors
         }
         
         logger.info(f"Loading completed: {result}")
         return result
     
     @staticmethod
-    def check_duplicate(external_id: int) -> bool:
+    def check_duplicate_by_external_id(external_id: int) -> bool:
         """
         Check if an attraction with the given external_id already exists.
         
@@ -73,17 +101,30 @@ class AttractionLoader:
         Returns:
             True if duplicate exists, False otherwise
         """
-        existing = Attraction.query.filter_by(external_id=external_id).first()
-        return existing is not None
+        return Attraction.find_duplicate_by_external_id(external_id) is not None
     
     @staticmethod
-    def bulk_load_attractions(attractions: List[Attraction], batch_size: int = 100) -> Dict[str, int]:
+    def check_duplicate_by_hash(content_hash: str) -> bool:
+        """
+        Check if an attraction with the given content hash already exists.
+        
+        Args:
+            content_hash: The content hash to check
+            
+        Returns:
+            True if duplicate exists, False otherwise
+        """
+        return Attraction.find_duplicate_by_hash(content_hash) is not None
+    
+    @staticmethod
+    def bulk_load_attractions(attractions: List[Attraction], batch_size: int = 100, sync_log: SyncLog = None) -> Dict[str, int]:
         """
         Load attractions in batches for better performance with large datasets.
         
         Args:
             attractions: List of Attraction objects to load
             batch_size: Number of items to process in each batch
+            sync_log: Optional sync log for tracking progress
             
         Returns:
             Dictionary with counts of saved and skipped items
@@ -92,19 +133,22 @@ class AttractionLoader:
         
         total_saved = 0
         total_skipped = 0
+        all_errors = []
         
         for i in range(0, len(attractions), batch_size):
             batch = attractions[i:i + batch_size]
             logger.debug(f"Processing batch {i//batch_size + 1}: items {i} to {i + len(batch) - 1}")
             
-            result = AttractionLoader.load_attractions(batch)
+            result = AttractionLoader.load_attractions(batch, sync_log)
             total_saved += result['saved']
             total_skipped += result['skipped']
+            all_errors.extend(result.get('errors', []))
         
         final_result = {
             'saved': total_saved,
-            'skipped': total_skipped,
-            'total_processed': len(attractions)
+            'skipped': total_skipped,  
+            'total_processed': len(attractions),
+            'errors': all_errors
         }
         
         logger.info(f"Bulk loading completed: {final_result}")

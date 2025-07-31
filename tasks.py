@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 @celery.task(bind=True)
-def fetch_attractions_task(self):
-    """Background task to fetch attractions from external API using ETL pipeline."""
+def fetch_attractions_task(self, sync_type='manual'):
+    """Enhanced background task to fetch attractions with sync logging and caching."""
     try:
         with app.app_context():
             # Get configuration
@@ -26,20 +26,28 @@ def fetch_attractions_task(self):
             page_size = app.config.get('PAGINATION_PAGE_SIZE', 20)
             max_pages = app.config.get('PAGINATION_MAX_PAGES', 100)
             
-            logger.info(f"Starting ETL process for external API: {api_url}")
-            logger.info(f"Pagination settings: enabled={enable_pagination}, page_size={page_size}, max_pages={max_pages}")
+            # Configure caching based on sync type
+            use_cache = sync_type == 'update'  # Use cache for update syncs, fresh data for daily
+            cache_ttl = 1800 if sync_type == 'update' else 3600  # 30 min for updates, 1 hour for others
             
-            # Run ETL process using orchestrator with pagination
+            logger.info(f"Starting ETL process ({sync_type}) for external API: {api_url}")
+            logger.info(f"Pagination settings: enabled={enable_pagination}, page_size={page_size}, max_pages={max_pages}")
+            logger.info(f"Cache settings: use_cache={use_cache}, ttl={cache_ttl}")
+            
+            # Run enhanced ETL process with sync logging
             result = ETLOrchestrator.run_external_api_etl(
                 api_url=api_url,
                 timeout=timeout,
                 enable_pagination=enable_pagination,
                 page_size=page_size,
                 max_pages=max_pages,
-                use_memory_efficient=enable_pagination  # Use memory efficient mode when pagination is enabled
+                use_memory_efficient=enable_pagination,
+                sync_type=sync_type,
+                use_cache=use_cache,
+                cache_ttl=cache_ttl
             )
             
-            logger.info(f"ETL task completed: {result}")
+            logger.info(f"ETL task ({sync_type}) completed: {result}")
             return result
             
     except requests.RequestException as e:

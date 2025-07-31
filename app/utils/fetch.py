@@ -81,10 +81,12 @@ def fetch_json_with_retry(
     headers: Optional[Dict[str, str]] = None,
     data: Optional[Dict[str, Any]] = None,
     json_data: Optional[Dict[str, Any]] = None,
+    use_cache: bool = True,
+    cache_ttl: int = 3600,
     **kwargs
 ) -> Dict[str, Any]:
     """
-    Fetch JSON data from URL with retry logic.
+    Fetch JSON data from URL with retry logic and optional caching.
     
     Args:
         url: The URL to fetch
@@ -93,6 +95,8 @@ def fetch_json_with_retry(
         headers: Optional headers dictionary
         data: Optional form data
         json_data: Optional JSON data
+        use_cache: Whether to use caching for GET requests
+        cache_ttl: Cache time-to-live in seconds
         **kwargs: Additional requests parameters
     
     Returns:
@@ -102,6 +106,15 @@ def fetch_json_with_retry(
         requests.RequestException: After all retry attempts are exhausted
         ValueError: If response is not valid JSON
     """
+    # Import here to avoid circular imports
+    from app.utils.cache import cache_manager
+    
+    # Try to get from cache first (only for GET requests)
+    if use_cache and method.upper() == 'GET' and not data and not json_data:
+        cached_response = cache_manager.get_cached_api_response(url)
+        if cached_response is not None:
+            return cached_response
+    
     response = fetch_with_retry(
         url=url,
         timeout=timeout,
@@ -113,7 +126,16 @@ def fetch_json_with_retry(
     )
     
     try:
-        return response.json()
+        json_response = response.json()
+        
+        # Cache the response (only for successful GET requests)
+        if use_cache and method.upper() == 'GET' and not data and not json_data:
+            # Ensure response is a list for caching
+            cache_data = json_response if isinstance(json_response, list) else [json_response]
+            cache_manager.cache_api_response(url, cache_data, cache_ttl)
+        
+        return json_response
+        
     except ValueError as e:
         logger.error(f"Failed to parse JSON response from {url}: {e}")
         raise

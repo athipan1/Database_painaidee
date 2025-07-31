@@ -28,7 +28,13 @@ celery_app.conf.update(
     beat_schedule={
         'fetch-attractions-daily': {
             'task': 'tasks.fetch_attractions_task',
-            'schedule': crontab(hour=1, minute=0),  # Run at 1:00 AM daily
+            'schedule': crontab(hour=1, minute=0),  # Run at 1:00 AM daily for full sync
+            'kwargs': {'sync_type': 'daily'}
+        },
+        'fetch-attractions-update': {
+            'task': 'tasks.fetch_attractions_task', 
+            'schedule': crontab(hour=13, minute=0),  # Run at 1:00 PM for update check
+            'kwargs': {'sync_type': 'update'}
         },
     },
 )
