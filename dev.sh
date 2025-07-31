@@ -77,6 +77,8 @@ run_flower() {
 run_test() {
     echo -e "${GREEN}Running setup tests...${NC}"
     python test_setup.py
+    echo -e "${GREEN}Running pytest integration test...${NC}"
+    python test_pytest_integration.py
 }
 
 init_database() {
