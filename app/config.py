@@ -46,6 +46,9 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
+    # Use SQLite for development when PostgreSQL is not available
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+        'sqlite:///painaidee_dev.db'
 
 
 class ProductionConfig(Config):

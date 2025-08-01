@@ -28,15 +28,17 @@ def create_app(config_name=None):
     from app.routes.attractions import attractions_bp
     from app.routes.dashboard import dashboard_bp
     from app.routes.ai_features import ai_bp
+    from app.routes.behavior_intelligence import behavior_bp
     app.register_blueprint(attractions_bp, url_prefix='/api')
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
+    app.register_blueprint(behavior_bp, url_prefix='/api')
     
     # Add a simple root route
     @app.route('/')
     def index():
         return {
-            'message': 'Painaidee Database API',
+            'message': 'Painaidee Database API with User Behavior Intelligence',
             'version': '1.0.0',
             'endpoints': {
                 'health': '/api/health',
@@ -48,6 +50,18 @@ def create_app(config_name=None):
                     'recommendations': '/api/ai/recommendations',
                     'trends': '/api/ai/trends',
                     'content': '/api/ai/content'
+                },
+                'behavior_intelligence': {
+                    'track': '/api/behavior/track',
+                    'analyze': '/api/behavior/analyze/<user_id>',
+                    'recommendations': '/api/behavior/recommendations/<user_id>',
+                    'trends': '/api/behavior/trends',
+                    'heatmap': '/api/behavior/heatmap',
+                    'predictions': '/api/behavior/predictions',
+                    'sessions': '/api/behavior/sessions/<user_id>',
+                    'preferences': '/api/behavior/preferences/<user_id>',
+                    'search_queries': '/api/behavior/search-queries/<user_id>',
+                    'stats': '/api/behavior/stats'
                 }
             }
         }
