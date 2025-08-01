@@ -2,7 +2,7 @@
 AI-powered features routes for the attractions API.
 """
 from flask import Blueprint, request, jsonify
-from app.models import db, Attraction, UserInteraction
+from app.models import db, Attraction, UserInteraction, ConversationSession
 from app.services.keyword_extraction import (
     extract_keywords_from_attraction, 
     keywords_to_json,
@@ -21,6 +21,13 @@ from app.services.content_rewriter import (
     improve_attraction_content,
     get_content_suggestions,
     calculate_content_readability
+)
+from app.services.conversational_ai import (
+    detect_user_intent,
+    generate_smart_query,
+    create_conversation_session,
+    get_contextual_response,
+    update_session_preferences
 )
 
 ai_bp = Blueprint('ai', __name__)
@@ -422,6 +429,12 @@ def get_ai_stats():
         total_interactions = UserInteraction.query.count()
         unique_users = UserInteraction.query.distinct(UserInteraction.user_id).count()
         
+        # Count conversation sessions
+        total_sessions = ConversationSession.query.count()
+        active_sessions = ConversationSession.query.filter(
+            ConversationSession.expires_at > db.func.now()
+        ).count()
+        
         return jsonify({
             'attractions': {
                 'total': total_attractions,
@@ -433,7 +446,163 @@ def get_ai_stats():
             'interactions': {
                 'total': total_interactions,
                 'unique_users': unique_users
+            },
+            'conversations': {
+                'total_sessions': total_sessions,
+                'active_sessions': active_sessions
             }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# New Conversational AI Endpoints
+
+@ai_bp.route('/nlu/intent', methods=['POST'])
+def detect_intent():
+    """Detect user intent from natural language text."""
+    data = request.get_json()
+    
+    if not data or 'text' not in data:
+        return jsonify({'error': 'Text field is required'}), 400
+    
+    try:
+        text = data['text']
+        intent_result = detect_user_intent(text)
+        
+        return jsonify({
+            'success': True,
+            'intent': intent_result['intent'],
+            'confidence': intent_result['confidence'],
+            'entities': intent_result['entities'],
+            'all_intents': intent_result.get('all_intents', {}),
+            'original_text': text
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ai_bp.route('/search/from-text', methods=['POST'])
+def search_from_text():
+    """Generate smart search query from natural language text."""
+    data = request.get_json()
+    
+    if not data or 'text' not in data:
+        return jsonify({'error': 'Text field is required'}), 400
+    
+    try:
+        text = data['text']
+        session_id = data.get('session_id')
+        
+        # Generate smart query
+        query_result = generate_smart_query(text, session_id)
+        
+        return jsonify({
+            'success': True,
+            'intent': query_result['intent'],
+            'query_params': query_result['query_params'],
+            'results': query_result['results'],
+            'total_results': query_result['total_results'],
+            'session_id': query_result['session_id']
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ai_bp.route('/conversation/session', methods=['POST'])
+def create_session():
+    """Create a new conversation session."""
+    data = request.get_json() or {}
+    
+    try:
+        user_id = data.get('user_id')
+        session_id = create_conversation_session(user_id)
+        
+        return jsonify({
+            'success': True,
+            'session_id': session_id,
+            'expires_in_hours': 24
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ai_bp.route('/conversation/chat', methods=['POST'])
+def conversational_chat():
+    """Main conversational chat endpoint with context awareness."""
+    data = request.get_json()
+    
+    if not data or 'text' not in data:
+        return jsonify({'error': 'Text field is required'}), 400
+    
+    try:
+        text = data['text']
+        session_id = data.get('session_id')
+        
+        # If no session provided, create one
+        if not session_id:
+            session_id = create_conversation_session()
+        
+        # Get contextual response
+        response = get_contextual_response(session_id, text)
+        
+        return jsonify({
+            'success': True,
+            'session_id': response['session_id'],
+            'message': response['response_message'],
+            'intent': response['query_result']['intent'],
+            'results': response['query_result']['results'],
+            'total_results': response['query_result']['total_results'],
+            'context_updated': response['context_updated']
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ai_bp.route('/conversation/preferences', methods=['POST'])
+def update_preferences():
+    """Update user preferences for a conversation session."""
+    data = request.get_json()
+    
+    if not data or 'session_id' not in data or 'preferences' not in data:
+        return jsonify({'error': 'session_id and preferences are required'}), 400
+    
+    try:
+        session_id = data['session_id']
+        preferences = data['preferences']
+        
+        success = update_session_preferences(session_id, preferences)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Preferences updated successfully'
+            })
+        else:
+            return jsonify({'error': 'Failed to update preferences or session not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ai_bp.route('/conversation/session/<session_id>', methods=['GET'])
+def get_session_info():
+    """Get information about a conversation session."""
+    try:
+        from app.services.conversational_ai import context_engine
+        session_context = context_engine.get_session_context(session_id)
+        
+        if not session_context:
+            return jsonify({'error': 'Session not found or expired'}), 404
+        
+        return jsonify({
+            'success': True,
+            'session': session_context
         })
         
     except Exception as e:
