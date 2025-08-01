@@ -462,7 +462,11 @@ def get_ai_stats():
 @ai_bp.route('/nlu/intent', methods=['POST'])
 def detect_intent():
     """Detect user intent from natural language text."""
-    data = request.get_json()
+    # Handle both JSON and form data
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form.to_dict() if request.form else {}
     
     if not data or 'text' not in data:
         return jsonify({'error': 'Text field is required'}), 400
@@ -487,7 +491,11 @@ def detect_intent():
 @ai_bp.route('/search/from-text', methods=['POST'])
 def search_from_text():
     """Generate smart search query from natural language text."""
-    data = request.get_json()
+    # Handle both JSON and form data
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form.to_dict() if request.form else {}
     
     if not data or 'text' not in data:
         return jsonify({'error': 'Text field is required'}), 400
@@ -515,7 +523,11 @@ def search_from_text():
 @ai_bp.route('/conversation/session', methods=['POST'])
 def create_session():
     """Create a new conversation session."""
-    data = request.get_json() or {}
+    # Handle both JSON and form data
+    if request.is_json:
+        data = request.get_json() or {}
+    else:
+        data = request.form.to_dict() if request.form else {}
     
     try:
         user_id = data.get('user_id')
@@ -534,7 +546,11 @@ def create_session():
 @ai_bp.route('/conversation/chat', methods=['POST'])
 def conversational_chat():
     """Main conversational chat endpoint with context awareness."""
-    data = request.get_json()
+    # Handle both JSON and form data
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form.to_dict() if request.form else {}
     
     if not data or 'text' not in data:
         return jsonify({'error': 'Text field is required'}), 400
@@ -567,7 +583,11 @@ def conversational_chat():
 @ai_bp.route('/conversation/preferences', methods=['POST'])
 def update_preferences():
     """Update user preferences for a conversation session."""
-    data = request.get_json()
+    # Handle both JSON and form data
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form.to_dict() if request.form else {}
     
     if not data or 'session_id' not in data or 'preferences' not in data:
         return jsonify({'error': 'session_id and preferences are required'}), 400
