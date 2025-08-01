@@ -163,3 +163,35 @@ class UserInteraction(db.Model):
             'interaction_value': self.interaction_value,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+class ConversationSession(db.Model):
+    """Model for managing conversational AI sessions and context."""
+    __tablename__ = 'conversation_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(100), unique=True, nullable=False)
+    user_id = db.Column(db.String(100), nullable=True)  # Optional user association
+    context_data = db.Column(db.Text, nullable=True)  # JSON string of conversation context
+    last_intent = db.Column(db.String(100), nullable=True)  # Last detected intent
+    preferences = db.Column(db.Text, nullable=True)  # JSON string of user preferences
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)  # Session expiration
+    
+    def __repr__(self):
+        return f'<ConversationSession {self.session_id}>'
+    
+    def to_dict(self):
+        """Convert conversation session to dictionary."""
+        return {
+            'id': self.id,
+            'session_id': self.session_id,
+            'user_id': self.user_id,
+            'context_data': self.context_data,
+            'last_intent': self.last_intent,
+            'preferences': self.preferences,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None
+        }
