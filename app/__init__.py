@@ -29,16 +29,18 @@ def create_app(config_name=None):
     from app.routes.dashboard import dashboard_bp
     from app.routes.ai_features import ai_bp
     from app.routes.behavior_intelligence import behavior_bp
+    from app.routes.data_cleaning import ai_cleaning_bp
     app.register_blueprint(attractions_bp, url_prefix='/api')
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
     app.register_blueprint(behavior_bp, url_prefix='/api')
+    app.register_blueprint(ai_cleaning_bp, url_prefix='/api/ai')
     
     # Add a simple root route
     @app.route('/')
     def index():
         return {
-            'message': 'Painaidee Database API with User Behavior Intelligence',
+            'message': 'Painaidee Database API with AI Data Cleaning & Enrichment',
             'version': '1.0.0',
             'endpoints': {
                 'health': '/api/health',
@@ -50,6 +52,14 @@ def create_app(config_name=None):
                     'recommendations': '/api/ai/recommendations',
                     'trends': '/api/ai/trends',
                     'content': '/api/ai/content'
+                },
+                'data_cleaning': {
+                    'validate': '/api/ai/data-cleaning/validate',
+                    'auto_tag': '/api/ai/auto-tagging/generate',
+                    'categorize': '/api/ai/category-suggestion/generate',
+                    'full_clean': '/api/ai/data-cleaning/full-clean',
+                    'overview': '/api/ai/data-cleaning/overview',
+                    'status': '/api/ai/data-cleaning/status/<attraction_id>'
                 },
                 'behavior_intelligence': {
                     'track': '/api/behavior/track',

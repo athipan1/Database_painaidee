@@ -23,6 +23,12 @@ class Attraction(db.Model):
     keywords_extracted = db.Column(db.Boolean, default=False)
     content_rewritten = db.Column(db.Boolean, default=False)
     view_count = db.Column(db.Integer, default=0)  # For trend analysis
+    # Data Cleaning & Enrichment fields
+    auto_tagged = db.Column(db.Boolean, default=False)
+    categorized = db.Column(db.Boolean, default=False)
+    data_validated = db.Column(db.Boolean, default=False)
+    validation_score = db.Column(db.Float, nullable=True)  # Overall data quality score (0-1)
+    last_cleaned_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -45,6 +51,11 @@ class Attraction(db.Model):
             'keywords_extracted': self.keywords_extracted,
             'content_rewritten': self.content_rewritten,
             'view_count': self.view_count,
+            'auto_tagged': self.auto_tagged,
+            'categorized': self.categorized,
+            'data_validated': self.data_validated,
+            'validation_score': self.validation_score,
+            'last_cleaned_at': self.last_cleaned_at.isoformat() if self.last_cleaned_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -318,4 +329,108 @@ class UserPreference(db.Model):
             'last_interaction': self.last_interaction.isoformat() if self.last_interaction else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class AttractionTag(db.Model):
+    """Model for storing auto-generated tags for attractions."""
+    __tablename__ = 'attraction_tags'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    attraction_id = db.Column(db.Integer, db.ForeignKey('attractions.id'), nullable=False)
+    tag_name = db.Column(db.String(100), nullable=False)
+    tag_type = db.Column(db.String(50), nullable=False)  # 'category', 'activity', 'location', 'feature'
+    confidence_score = db.Column(db.Float, default=0.0)  # AI confidence in the tag
+    source = db.Column(db.String(50), default='ai_auto')  # 'ai_auto', 'manual', 'imported'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    attraction = db.relationship('Attraction', backref='tags')
+    
+    # Unique constraint
+    __table_args__ = (db.UniqueConstraint('attraction_id', 'tag_name', 'tag_type'),)
+    
+    def __repr__(self):
+        return f'<AttractionTag {self.attraction_id}: {self.tag_type}={self.tag_name}>'
+    
+    def to_dict(self):
+        """Convert attraction tag to dictionary."""
+        return {
+            'id': self.id,
+            'attraction_id': self.attraction_id,
+            'tag_name': self.tag_name,
+            'tag_type': self.tag_type,
+            'confidence_score': self.confidence_score,
+            'source': self.source,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class AttractionCategory(db.Model):
+    """Model for AI-suggested categories for attractions."""
+    __tablename__ = 'attraction_categories'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    attraction_id = db.Column(db.Integer, db.ForeignKey('attractions.id'), nullable=False)
+    category_name = db.Column(db.String(100), nullable=False)
+    parent_category = db.Column(db.String(100), nullable=True)  # For hierarchical categories
+    confidence_score = db.Column(db.Float, default=0.0)
+    is_primary = db.Column(db.Boolean, default=False)  # Main category vs secondary
+    source = db.Column(db.String(50), default='ai_suggestion')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    attraction = db.relationship('Attraction', backref='categories')
+    
+    def __repr__(self):
+        return f'<AttractionCategory {self.attraction_id}: {self.category_name}>'
+    
+    def to_dict(self):
+        """Convert attraction category to dictionary."""
+        return {
+            'id': self.id,
+            'attraction_id': self.attraction_id,
+            'category_name': self.category_name,
+            'parent_category': self.parent_category,
+            'confidence_score': self.confidence_score,
+            'is_primary': self.is_primary,
+            'source': self.source,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class DataValidationResult(db.Model):
+    """Model for storing data validation results from AI cleaning."""
+    __tablename__ = 'data_validation_results'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    attraction_id = db.Column(db.Integer, db.ForeignKey('attractions.id'), nullable=False)
+    field_name = db.Column(db.String(50), nullable=False)  # 'title', 'body', etc.
+    validation_type = db.Column(db.String(50), nullable=False)  # 'grammar', 'duplicate', 'typo'
+    issue_description = db.Column(db.Text, nullable=True)
+    suggested_fix = db.Column(db.Text, nullable=True)
+    confidence_score = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'fixed', 'ignored'
+    fixed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    attraction = db.relationship('Attraction', backref='validation_results')
+    
+    def __repr__(self):
+        return f'<DataValidationResult {self.attraction_id}: {self.validation_type}>'
+    
+    def to_dict(self):
+        """Convert data validation result to dictionary."""
+        return {
+            'id': self.id,
+            'attraction_id': self.attraction_id,
+            'field_name': self.field_name,
+            'validation_type': self.validation_type,
+            'issue_description': self.issue_description,
+            'suggested_fix': self.suggested_fix,
+            'confidence_score': self.confidence_score,
+            'status': self.status,
+            'fixed_at': self.fixed_at.isoformat() if self.fixed_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }

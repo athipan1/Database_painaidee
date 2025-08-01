@@ -7,6 +7,9 @@ from app.services.geocoding import get_geocoding_service
 from app.services.keyword_extraction import extract_keywords_from_attraction, keywords_to_json
 from app.services.recommendation import RecommendationEngine
 from app.services.content_rewriter import improve_attraction_content
+from app.services.data_validation import validate_batch_attractions
+from app.services.auto_tagging import tag_batch_attractions
+from app.services.category_suggestion import suggest_categories_batch
 from app.models import db, SyncStatistics, Attraction
 import requests
 import time
@@ -424,6 +427,289 @@ def cleanup_old_interactions_task(days=90):
                 
     except Exception as e:
         logger.error(f"Error in cleanup_old_interactions_task: {str(e)}")
+        raise
+
+
+# New Data Cleaning & Enrichment Tasks
+
+@celery.task(bind=True)
+def validate_attractions_batch_task(self, attraction_ids=None, limit=50):
+    """Background task to validate attraction data for quality issues."""
+    try:
+        with app.app_context():
+            if attraction_ids:
+                # Process specific attractions
+                attractions = Attraction.query.filter(Attraction.id.in_(attraction_ids)).all()
+                attraction_ids_to_process = [a.id for a in attractions]
+            else:
+                # Process attractions that haven't been validated
+                query = Attraction.query.filter_by(data_validated=False)
+                if limit:
+                    query = query.limit(limit)
+                attractions = query.all()
+                attraction_ids_to_process = [a.id for a in attractions]
+            
+            if not attraction_ids_to_process:
+                logger.info("No attractions to validate")
+                return {'message': 'No attractions to validate'}
+            
+            # Use the batch validation service
+            result = validate_batch_attractions(attraction_ids_to_process)
+            
+            logger.info(f"Data validation task completed: {result['processed']} processed, "
+                       f"{result['successful']} successful, {result['failed']} failed")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in validate_attractions_batch_task: {str(e)}")
+        raise
+
+
+@celery.task(bind=True)
+def auto_tag_attractions_batch_task(self, attraction_ids=None, limit=50):
+    """Background task to generate automatic tags for attractions."""
+    try:
+        with app.app_context():
+            if attraction_ids:
+                # Process specific attractions
+                attractions = Attraction.query.filter(Attraction.id.in_(attraction_ids)).all()
+                attraction_ids_to_process = [a.id for a in attractions]
+            else:
+                # Process attractions that haven't been auto-tagged
+                query = Attraction.query.filter_by(auto_tagged=False)
+                if limit:
+                    query = query.limit(limit)
+                attractions = query.all()
+                attraction_ids_to_process = [a.id for a in attractions]
+            
+            if not attraction_ids_to_process:
+                logger.info("No attractions to tag")
+                return {'message': 'No attractions to tag'}
+            
+            # Use the batch tagging service
+            result = tag_batch_attractions(attraction_ids_to_process)
+            
+            logger.info(f"Auto-tagging task completed: {result['processed']} processed, "
+                       f"{result['successful']} successful, {result['failed']} failed, "
+                       f"{result['total_tags_generated']} total tags generated")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in auto_tag_attractions_batch_task: {str(e)}")
+        raise
+
+
+@celery.task(bind=True)
+def categorize_attractions_batch_task(self, attraction_ids=None, limit=50):
+    """Background task to generate category suggestions for attractions."""
+    try:
+        with app.app_context():
+            if attraction_ids:
+                # Process specific attractions
+                attractions = Attraction.query.filter(Attraction.id.in_(attraction_ids)).all()
+                attraction_ids_to_process = [a.id for a in attractions]
+            else:
+                # Process attractions that haven't been categorized
+                query = Attraction.query.filter_by(categorized=False)
+                if limit:
+                    query = query.limit(limit)
+                attractions = query.all()
+                attraction_ids_to_process = [a.id for a in attractions]
+            
+            if not attraction_ids_to_process:
+                logger.info("No attractions to categorize")
+                return {'message': 'No attractions to categorize'}
+            
+            # Use the batch categorization service
+            result = suggest_categories_batch(attraction_ids_to_process)
+            
+            logger.info(f"Categorization task completed: {result['processed']} processed, "
+                       f"{result['successful']} successful, {result['failed']} failed, "
+                       f"{result['total_categories_suggested']} total categories suggested")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in categorize_attractions_batch_task: {str(e)}")
+        raise
+
+
+@celery.task(bind=True)
+def full_data_cleaning_task(self, attraction_ids=None, limit=20, config=None):
+    """
+    Comprehensive data cleaning task that performs validation, tagging, 
+    categorization, and geocoding.
+    """
+    try:
+        with app.app_context():
+            # Default configuration
+            default_config = {
+                'enable_validation': True,
+                'enable_tagging': True,
+                'enable_categorization': True,
+                'enable_geocoding': True,
+                'validation_limit': limit,
+                'tagging_limit': limit,
+                'categorization_limit': limit
+            }
+            
+            if config:
+                default_config.update(config)
+            config = default_config
+            
+            # Get attractions to process
+            if attraction_ids:
+                attractions = Attraction.query.filter(Attraction.id.in_(attraction_ids)).all()
+                attraction_ids_to_process = [a.id for a in attractions]
+            else:
+                # Get attractions that need cleaning (prioritize by update date)
+                query = Attraction.query.filter(
+                    db.or_(
+                        Attraction.data_validated == False,
+                        Attraction.auto_tagged == False,
+                        Attraction.categorized == False,
+                        Attraction.geocoded == False
+                    )
+                ).order_by(Attraction.updated_at.desc())
+                
+                if limit:
+                    query = query.limit(limit)
+                attractions = query.all()
+                attraction_ids_to_process = [a.id for a in attractions]
+            
+            if not attraction_ids_to_process:
+                logger.info("No attractions need cleaning")
+                return {'message': 'No attractions need cleaning'}
+            
+            results = {
+                'processed_attractions': len(attraction_ids_to_process),
+                'validation_results': None,
+                'tagging_results': None,
+                'categorization_results': None,
+                'geocoding_results': {'processed': 0, 'successful': 0}
+            }
+            
+            # Step 1: Data Validation
+            if config['enable_validation']:
+                try:
+                    logger.info("Starting data validation...")
+                    # Filter attractions that need validation
+                    validation_ids = [a.id for a in attractions if not a.data_validated]
+                    if validation_ids:
+                        validation_result = validate_batch_attractions(validation_ids[:config['validation_limit']])
+                        results['validation_results'] = validation_result
+                        logger.info(f"Validation completed: {validation_result['successful']} successful")
+                except Exception as e:
+                    logger.error(f"Error in validation step: {str(e)}")
+                    results['validation_results'] = {'error': str(e)}
+            
+            # Step 2: Auto-Tagging
+            if config['enable_tagging']:
+                try:
+                    logger.info("Starting auto-tagging...")
+                    # Filter attractions that need tagging
+                    tagging_ids = [a.id for a in attractions if not a.auto_tagged]
+                    if tagging_ids:
+                        tagging_result = tag_batch_attractions(tagging_ids[:config['tagging_limit']])
+                        results['tagging_results'] = tagging_result
+                        logger.info(f"Tagging completed: {tagging_result['successful']} successful, "
+                                   f"{tagging_result['total_tags_generated']} tags generated")
+                except Exception as e:
+                    logger.error(f"Error in tagging step: {str(e)}")
+                    results['tagging_results'] = {'error': str(e)}
+            
+            # Step 3: Category Suggestion
+            if config['enable_categorization']:
+                try:
+                    logger.info("Starting categorization...")
+                    # Filter attractions that need categorization
+                    categorization_ids = [a.id for a in attractions if not a.categorized]
+                    if categorization_ids:
+                        categorization_result = suggest_categories_batch(categorization_ids[:config['categorization_limit']])
+                        results['categorization_results'] = categorization_result
+                        logger.info(f"Categorization completed: {categorization_result['successful']} successful, "
+                                   f"{categorization_result['total_categories_suggested']} categories suggested")
+                except Exception as e:
+                    logger.error(f"Error in categorization step: {str(e)}")
+                    results['categorization_results'] = {'error': str(e)}
+            
+            # Step 4: Geocoding (existing service)
+            if config['enable_geocoding']:
+                try:
+                    logger.info("Starting geocoding...")
+                    geocoding_service = get_geocoding_service()
+                    if geocoding_service:
+                        geocoded_count = 0
+                        successful_geocoding = 0
+                        
+                        # Filter attractions that need geocoding
+                        for attraction in attractions:
+                            if not attraction.geocoded and (attraction.province or attraction.title):
+                                geocoded_count += 1
+                                try:
+                                    success = geocoding_service.geocode_attraction(attraction.id)
+                                    if success:
+                                        successful_geocoding += 1
+                                    
+                                    # Add delay to respect API limits
+                                    time.sleep(0.2)
+                                except Exception as e:
+                                    logger.error(f"Error geocoding attraction {attraction.id}: {str(e)}")
+                                    continue
+                        
+                        results['geocoding_results'] = {
+                            'processed': geocoded_count,
+                            'successful': successful_geocoding
+                        }
+                        logger.info(f"Geocoding completed: {successful_geocoding}/{geocoded_count} successful")
+                    else:
+                        logger.warning("Geocoding service not available")
+                        results['geocoding_results'] = {'error': 'Geocoding service not available'}
+                        
+                except Exception as e:
+                    logger.error(f"Error in geocoding step: {str(e)}")
+                    results['geocoding_results'] = {'error': str(e)}
+            
+            logger.info(f"Full data cleaning task completed for {len(attraction_ids_to_process)} attractions")
+            return results
+            
+    except Exception as e:
+        logger.error(f"Error in full_data_cleaning_task: {str(e)}")
+        raise
+
+
+@celery.task
+def cleanup_old_validation_results_task(days=30):
+    """Background task to clean up old validation results."""
+    try:
+        with app.app_context():
+            from app.models import DataValidationResult
+            from datetime import datetime, timedelta
+            
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            # Count results to delete (only fixed/ignored ones)
+            old_results = DataValidationResult.query.filter(
+                DataValidationResult.created_at < cutoff_date,
+                DataValidationResult.status.in_(['fixed', 'ignored'])
+            ).count()
+            
+            if old_results > 0:
+                # Delete old validation results
+                DataValidationResult.query.filter(
+                    DataValidationResult.created_at < cutoff_date,
+                    DataValidationResult.status.in_(['fixed', 'ignored'])
+                ).delete()
+                
+                db.session.commit()
+                
+                logger.info(f"Cleaned up {old_results} old validation results (older than {days} days)")
+                return {'deleted_results': old_results}
+            else:
+                logger.info("No old validation results to clean up")
+                return {'deleted_results': 0}
+                
+    except Exception as e:
+        logger.error(f"Error in cleanup_old_validation_results_task: {str(e)}")
         raise
 
 

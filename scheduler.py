@@ -58,6 +58,40 @@ celery_app.conf.update(
             'schedule': crontab(hour=6, minute=0, day=1),  # Run on the 1st day of each month at 6:00 AM
             'kwargs': {'days': 90}  # Keep interactions for 90 days
         },
+        # Data Cleaning & Enrichment scheduled tasks
+        'validate-attractions-daily': {
+            'task': 'tasks.validate_attractions_batch_task',
+            'schedule': crontab(hour=3, minute=30),  # Run at 3:30 AM daily
+            'kwargs': {'limit': 30}  # Process max 30 attractions per day
+        },
+        'auto-tag-attractions-daily': {
+            'task': 'tasks.auto_tag_attractions_batch_task',
+            'schedule': crontab(hour=4, minute=30),  # Run at 4:30 AM daily
+            'kwargs': {'limit': 40}  # Process max 40 attractions per day
+        },
+        'categorize-attractions-daily': {
+            'task': 'tasks.categorize_attractions_batch_task',
+            'schedule': crontab(hour=5, minute=30),  # Run at 5:30 AM daily
+            'kwargs': {'limit': 35}  # Process max 35 attractions per day
+        },
+        'full-data-cleaning-weekly': {
+            'task': 'tasks.full_data_cleaning_task',
+            'schedule': crontab(hour=2, minute=30, day_of_week=0),  # Run at 2:30 AM every Sunday
+            'kwargs': {
+                'limit': 25,
+                'config': {
+                    'enable_validation': True,
+                    'enable_tagging': True,
+                    'enable_categorization': True,
+                    'enable_geocoding': True
+                }
+            }
+        },
+        'cleanup-old-validation-results-monthly': {
+            'task': 'tasks.cleanup_old_validation_results_task',
+            'schedule': crontab(hour=7, minute=0, day=1),  # Run on the 1st day of each month at 7:00 AM
+            'kwargs': {'days': 30}  # Keep validation results for 30 days after they're fixed/ignored
+        },
     },
 )
 
