@@ -1,21 +1,80 @@
 # Database Painaidee - Flask Backend API
 
-🚀 A Flask backend application for managing attraction data with PostgreSQL, Celery, and Redis.
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-2.3+-green.svg)](https://flask.palletsprojects.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12+-blue.svg)](https://postgresql.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docker.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**ไปไหนดี** - ระบบจัดการข้อมูลสถานที่ท่องเที่ยวด้วย AI และ Big Data
+
+🚀 A comprehensive Flask backend application for managing Thai attraction data with PostgreSQL, Celery, Redis, and AI-powered features. Perfect for tourism applications, travel platforms, and location-based services.
+
+## Table of Contents
+- [About This Project](#about-this-project)
+- [Features](#features) 
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [API Endpoints](#api-endpoints)
+- [New Features](#new-features)
+- [Environment Variables](#environment-variables)
+- [Scheduled Tasks](#scheduled-tasks)
+- [Development](#development)
+- [Production Deployment](#production-deployment)
+- [Monitoring](#monitoring)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+
+## About This Project
+
+**Database Painaidee** is a production-ready Flask backend system designed for Thai tourism applications. It provides comprehensive attraction data management with AI-powered features, real-time analytics, and automated ETL processes.
+
+**Key Use Cases:**
+- Tourism mobile apps and websites
+- Travel recommendation platforms  
+- Location-based marketing systems
+- Government tourism analytics
+- Travel agency management systems
+
+### Architecture Overview
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Flask API     │    │   Background    │
+│   (Mobile/Web)  │◄──►│   (REST/AI)     │◄──►│   Workers       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │                       │
+                                ▼                       ▼
+                       ┌─────────────────┐    ┌─────────────────┐
+                       │   PostgreSQL    │    │     Redis       │
+                       │   (Data Store)  │    │   (Queue/Cache) │
+                       └─────────────────┘    └─────────────────┘
+```
 
 ## Features
 
-- ✅ **Flask API** with `/attractions` endpoint for external data fetching
-- ✅ **PostgreSQL Integration** with SQLAlchemy ORM and data deduplication
-- ✅ **Background Tasks** using Celery + Redis
-- ✅ **Scheduled Jobs** - Daily data sync at 1:00 AM (Cron schedule)
-- ✅ **Docker Compose** setup for easy deployment
-- ✅ **Modular Structure** with clean separation of concerns
-- ✅ **Flower Dashboard** support for Celery monitoring
-- 🆕 **Auto-Geocoding** - Automatically calculate coordinates using Google/OpenStreetMap APIs
-- 🆕 **Real-time Dashboard** - Monitor ETL operations with statistics and charts
-- 🆕 **Data Versioning** - Track changes with attraction history and rollback capability
-- 🆕 **Automated Backups** - Database snapshots with pg_dump and rollback functionality
-- 🆕 **Load Balancing** - Multi-worker setup with nginx for scaling
+### Core Infrastructure
+- ✅ **Flask REST API** with comprehensive attraction data management
+- ✅ **PostgreSQL Integration** with SQLAlchemy ORM and automatic deduplication
+- ✅ **Background Processing** using Celery + Redis for async operations
+- ✅ **Scheduled Jobs** - Automated daily data sync and maintenance (Cron)
+- ✅ **Docker Compose** setup for easy deployment and scaling
+- ✅ **Modular Architecture** with clean separation of concerns
+
+### Advanced Features  
+- 🆕 **AI-Powered Intelligence** - Keyword extraction, content improvement, recommendations
+- 🆕 **Behavior Analytics** - User tracking, pattern analysis, predictive insights  
+- 🆕 **Auto-Geocoding** - Automatic coordinate calculation via Google/OpenStreetMap APIs
+- 🆕 **Real-time Dashboard** - Live monitoring with statistics and interactive charts
+- 🆕 **Data Versioning** - Complete change tracking with rollback capabilities
+- 🆕 **Automated Backups** - Database snapshots with pg_dump and restore functionality
+- 🆕 **Load Balancing** - Multi-worker nginx setup for high availability
+
+### Monitoring & Operations
+- 🔧 **Flower Dashboard** support for Celery task monitoring
+- 🔧 **Health Checks** - Comprehensive system status monitoring  
+- 🔧 **Error Handling** - Robust error tracking and recovery
+- 🔧 **API Documentation** - Complete endpoint documentation
 
 ## Project Structure
 
@@ -50,13 +109,27 @@
 └── README.md              # This file
 ```
 
+## Prerequisites
+
+Before running this application, ensure you have:
+
+- **Docker & Docker Compose** (recommended for easy setup)
+- **Python 3.8+** (for local development)
+- **PostgreSQL 12+** (if running without Docker)
+- **Redis 6+** (for background tasks)
+- **Git** (for cloning the repository)
+
+Optional for enhanced features:
+- **Google Geocoding API Key** (for location services)
+- **nginx** (for production load balancing)
+
 ## Quick Start
 
 ### Using Docker Compose (Recommended)
 
 1. **Clone and setup environment:**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/athipan1/Database_painaidee.git
    cd Database_painaidee
    cp .env.example .env
    # Edit .env file with your API keys and settings
@@ -94,33 +167,47 @@
 
 ## API Endpoints
 
-### Health Check
+### Core Attractions API
 ```http
-GET /api/health
+GET /api/attractions              # Get all attractions
+POST /api/attractions/sync        # Manual sync from external API
+GET /api/health                   # Health check
 ```
 
-### Get All Attractions
+### Dashboard & Monitoring
 ```http
-GET /api/attractions
+GET /api/dashboard/               # Dashboard web interface  
+GET /api/dashboard/stats          # Dashboard statistics
+GET /api/dashboard/health         # System health status
+GET /api/dashboard/attractions/recent  # Recent attractions
+GET /api/dashboard/versions/{id}  # Attraction version history
 ```
 
-### Manual Sync from External API
+### AI Features
 ```http
-POST /api/attractions/sync
+POST /api/ai/keywords/extract     # Extract keywords from attraction/text
+POST /api/ai/keywords/batch-extract  # Batch keyword extraction
+GET /api/ai/recommendations/{user_id}  # AI-powered recommendations
+POST /api/ai/interactions         # Track user interactions
+GET /api/ai/trends/analyze        # Trend analysis
+GET /api/ai/trends/heatmap        # Geographic heatmaps
+POST /api/ai/content/improve      # Content improvement
+POST /api/ai/conversation/chat    # Conversational AI
 ```
 
-### Dashboard
+### Behavior Intelligence
 ```http
-GET /api/dashboard/
-GET /api/dashboard/stats
-GET /api/dashboard/health
-GET /api/dashboard/attractions/recent
-GET /api/dashboard/versions/{attraction_id}
+POST /api/behavior/track          # Track user behavior
+GET /api/behavior/analyze/{user_id}     # User behavior analysis
+GET /api/behavior/recommendations/{user_id}  # Behavior-based recommendations
+GET /api/behavior/trends          # Behavioral trends
+GET /api/behavior/heatmap         # User activity heatmaps
+GET /api/behavior/stats           # System statistics
 ```
 
 ### Root Information
 ```http
-GET /
+GET /                             # API information and available endpoints
 ```
 
 ## New Features
@@ -209,30 +296,49 @@ docker-compose --profile loadbalancer up -d
 
 ## Environment Variables
 
-Key environment variables (see `.env.example` for all options):
+Configure the application by copying `.env.example` to `.env` and updating the values:
 
+### Required Variables
 ```env
-# Flask
+# Flask Application
 FLASK_ENV=development
-SECRET_KEY=your-secret-key
+SECRET_KEY=your-secret-key-here
 
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/painaidee_db
+# Database Configuration
+DATABASE_URL=postgresql://user:password@db:5432/painaidee_db
+POSTGRES_DB=painaidee_db
+POSTGRES_USER=user
+POSTGRES_PASSWORD=password
 
-# Redis
-REDIS_URL=redis://localhost:6379/0
-CELERY_BROKER_URL=redis://localhost:6379/0
+# Redis Configuration  
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+```
 
-# External API
+### Optional Variables
+```env
+# External API Settings
 EXTERNAL_API_URL=https://jsonplaceholder.typicode.com/posts
+API_TIMEOUT=30
 
-# Geocoding
+# Pagination
+PAGINATION_ENABLED=true
+PAGINATION_PAGE_SIZE=20
+PAGINATION_MAX_PAGES=100
+
+# Geocoding (Optional - for location services)
 GOOGLE_GEOCODING_API_KEY=your-google-api-key-here
 USE_GOOGLE_GEOCODING=true
+GEOCODING_TIMEOUT=10
 
-# Backup
+# Backup Configuration
 BACKUP_DIR=/tmp/db_backups
+BACKUP_RETENTION_DAYS=7
 AUTO_BACKUP_BEFORE_SYNC=true
+
+# Development Settings
+DEBUG=True
+TESTING=False
 ```
 
 ## Scheduled Tasks
@@ -283,20 +389,23 @@ docker-compose --profile flower up -d
 ### Testing
 
 ```bash
-# Test setup and configuration
+# Run basic setup and configuration tests
 python test_setup.py
 
-# Run new feature tests
-python -m pytest test_new_features.py -v
-
-# Run all tests
+# Run comprehensive test suite
 python -m pytest -v
 
-# Health check
-curl http://localhost:5000/api/health
+# Test specific components
+python -m pytest test_new_features.py -v          # Core features
+python -m pytest test_ai_features.py -v           # AI functionality  
+python -m pytest test_behavior_intelligence.py -v # User behavior analytics
+python -m pytest test_etl.py -v                   # ETL processes
+python -m pytest test_pagination.py -v            # Pagination features
 
-# Dashboard stats
-curl http://localhost:5000/api/dashboard/stats
+# Test API endpoints
+curl http://localhost:5000/api/health              # Health check
+curl http://localhost:5000/api/dashboard/stats     # Dashboard statistics
+curl http://localhost:5000/                        # API information
 ```
 
 ## Production Deployment
@@ -319,14 +428,39 @@ curl http://localhost:5000/api/dashboard/stats
 
 ## Troubleshooting
 
+## Troubleshooting
+
 ### Common Issues
 
-1. **Database Connection Error**: Ensure PostgreSQL is running and credentials are correct
-2. **Celery Worker Not Starting**: Check Redis connection and broker URL
-3. **External API Timeout**: Verify network connectivity and API availability
-4. **Geocoding API Limits**: Check API key limits and rate limiting
-5. **Backup Failures**: Verify pg_dump availability and permissions
-6. **Docker Build Issues**: Check Dockerfile and requirements.txt
+1. **Database Connection Error**
+   - Ensure PostgreSQL is running: `docker-compose ps db`
+   - Check credentials in `.env` file match `docker-compose.yml`
+   - Verify database URL format: `postgresql://user:password@host:port/database`
+
+2. **Celery Worker Not Starting**
+   - Check Redis connection: `docker-compose ps redis`
+   - Verify `CELERY_BROKER_URL` in environment variables
+   - Restart services: `docker-compose restart celery_worker`
+
+3. **External API Timeout/Connection Issues**
+   - Check network connectivity and API availability
+   - Verify `EXTERNAL_API_URL` configuration
+   - Increase `API_TIMEOUT` value in `.env`
+
+4. **Geocoding API Failures**
+   - Verify Google Geocoding API key is valid and has quota
+   - Check `GOOGLE_GEOCODING_API_KEY` in `.env`
+   - Monitor API usage limits in Google Cloud Console
+
+5. **AI Features Not Working**
+   - Install optional AI dependencies if needed
+   - Check system memory for large model processing
+   - Verify fallback methods are working
+
+6. **Docker Build/Container Issues**
+   - Clear Docker cache: `docker system prune -f`
+   - Rebuild images: `docker-compose build --no-cache`
+   - Check Docker logs: `docker-compose logs [service_name]`
 
 ### Logs
 
@@ -345,14 +479,37 @@ docker-compose logs web | grep dashboard
 
 ## Contributing
 
+We welcome contributions to Database Painaidee! Here's how to get started:
+
+### Development Setup
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Update documentation
-6. Test thoroughly
-7. Submit a pull request
+2. Clone your fork locally
+3. Create a virtual environment: `python -m venv venv`
+4. Activate it: `source venv/bin/activate` (Linux/Mac) or `venv\Scripts\activate` (Windows)
+5. Install dependencies: `pip install -r requirements.txt`
+6. Copy `.env.example` to `.env` and configure
+
+### Making Changes
+1. Create a feature branch: `git checkout -b feature/your-feature-name`
+2. Make your changes with clear, focused commits
+3. Add tests for new functionality
+4. Update documentation as needed
+5. Ensure all tests pass: `python -m pytest`
+
+### Submitting Changes
+1. Push your changes to your fork
+2. Create a Pull Request with a clear description
+3. Ensure CI tests pass
+4. Respond to code review feedback
+
+### Areas for Contribution
+- 🔧 API endpoint improvements
+- 🤖 AI/ML model enhancements  
+- 📊 Dashboard features
+- 🌐 Internationalization (i18n)
+- 📚 Documentation improvements
+- 🧪 Test coverage expansion
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
