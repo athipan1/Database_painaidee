@@ -42,6 +42,22 @@ celery_app.conf.update(
             'task': 'tasks.cleanup_old_versions_task',
             'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Run at 3:00 AM every Sunday
         },
+        # AI-related scheduled tasks
+        'extract-keywords-daily': {
+            'task': 'tasks.extract_keywords_batch_task',
+            'schedule': crontab(hour=4, minute=0),  # Run at 4:00 AM daily
+            'kwargs': {'limit': 50}  # Process max 50 attractions per day
+        },
+        'improve-content-weekly': {
+            'task': 'tasks.improve_content_batch_task',
+            'schedule': crontab(hour=5, minute=0, day_of_week=1),  # Run at 5:00 AM every Monday
+            'kwargs': {'limit': 20, 'style': 'friendly'}  # Process max 20 attractions per week
+        },
+        'cleanup-old-interactions-monthly': {
+            'task': 'tasks.cleanup_old_interactions_task',
+            'schedule': crontab(hour=6, minute=0, day=1),  # Run on the 1st day of each month at 6:00 AM
+            'kwargs': {'days': 90}  # Keep interactions for 90 days
+        },
     },
 )
 
