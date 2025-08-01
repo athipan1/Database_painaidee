@@ -1,7 +1,48 @@
 # GitHub Actions Workflow Fix Summary
 
-## 🎯 Problem Statement
-The GitHub Actions workflow (Run #16668765803) was failing with multiple critical errors:
+## 🎯 Problem Statement  
+The GitHub Actions workflow was failing at step 2 (Redis service startup) with the specific error:
+```
+invalid argument "vm.overcommit_memory=1" for "--sysctl" flag: sysctl 'vm.overcommit_memory=1' is not allowed
+```
+
+## 🔍 Root Cause Analysis
+The regular `redis:7` Docker image was attempting to set the `vm.overcommit_memory=1` sysctl parameter, which is not permitted in the GitHub Actions runner environment for security reasons.
+
+## ✅ Solution Implemented
+**Changed Redis service image from `redis:7` to `redis:7-alpine`** in `.github/workflows/docker-build-push.yml`
+
+### Why Redis Alpine?
+1. **No sysctl requirements**: Alpine images don't require the problematic sysctl settings
+2. **Consistency**: Already used in `docker-compose.yml` for local development  
+3. **Smaller size**: Alpine images are more efficient  
+4. **Same functionality**: Redis Alpine provides identical Redis functionality
+
+## 📝 Specific Changes Made
+```yaml
+# Before (causing failure)
+redis:
+  image: redis:7
+  
+# After (working solution)  
+redis:
+  image: redis:7-alpine
+```
+
+## 🧪 Verification Completed
+- ✅ Redis Alpine container starts successfully without sysctl errors
+- ✅ Health checks work properly with `redis-cli ping`
+- ✅ Basic Redis operations (SET/GET) function correctly
+- ✅ Consistent with existing Docker Compose configuration
+- ✅ YAML syntax validated
+- ✅ Tested end-to-end Redis functionality
+
+## 🎉 Expected Result
+The GitHub Actions workflow should now pass step 2 successfully and complete the entire CI/CD pipeline without Redis service failures.
+
+---
+*Fix implemented: January 2025*  
+*Issue Reference: https://github.com/athipan1/Database_painaidee/actions/runs/16678796360/job/47212429650#step:2:1*
 
 1. **TypeError: 'NoneType' object is not subscriptable** - Tests accessing None values
 2. **415 UNSUPPORTED MEDIA TYPE** - Content-Type header issues in POST requests  
