@@ -34,13 +34,25 @@ celery_app.conf.update(
             'task': 'tasks.geocode_attractions_task',
             'schedule': crontab(hour=2, minute=0),  # Run at 2:00 AM daily (after sync)
         },
+        'ai-process-attractions-daily': {
+            'task': 'tasks.process_attractions_ai_task',
+            'schedule': crontab(hour=3, minute=0),  # Run at 3:00 AM daily (after geocoding)
+        },
+        'update-search-vectors-daily': {
+            'task': 'tasks.update_search_vectors_task',
+            'schedule': crontab(hour=4, minute=0),  # Run at 4:00 AM daily (after AI processing)
+        },
+        'preload-cache-every-hour': {
+            'task': 'tasks.preload_cache_task',
+            'schedule': crontab(minute=0),  # Run every hour at minute 0
+        },
         'backup-database-daily': {
             'task': 'tasks.backup_database_task',
             'schedule': crontab(hour=0, minute=30),  # Run at 12:30 AM daily (before sync)
         },
         'cleanup-old-versions-weekly': {
             'task': 'tasks.cleanup_old_versions_task',
-            'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Run at 3:00 AM every Sunday
+            'schedule': crontab(hour=5, minute=0, day_of_week=0),  # Run at 5:00 AM every Sunday
         },
     },
 )

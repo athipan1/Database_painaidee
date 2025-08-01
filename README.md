@@ -99,31 +99,125 @@
 GET /api/health
 ```
 
-### Get All Attractions
+### Attractions
 ```http
-GET /api/attractions
+GET /api/attractions                    # List attractions with pagination and filters
+GET /api/attractions/{id}               # Get specific attraction
+GET /api/attractions/stats              # Get attraction statistics
 ```
 
-### Manual Sync from External API
+### Search & Discovery
 ```http
-POST /api/attractions/sync
+GET /api/attractions/search             # Full-text search with filters
+GET /api/attractions/{id}/recommendations # Get similar attractions
+GET /api/attractions/trending           # Get trending attractions
+GET /api/attractions/suggestions        # Get search suggestions
 ```
 
-### Dashboard
+### Data Management
 ```http
-GET /api/dashboard/
-GET /api/dashboard/stats
-GET /api/dashboard/health
-GET /api/dashboard/attractions/recent
-GET /api/dashboard/versions/{attraction_id}
+POST /api/attractions/sync              # Manual sync from external API
+POST /api/attractions/process-ai        # Trigger AI processing
+POST /api/attractions/cache/clear       # Clear cache
+POST /api/attractions/cache/preload     # Preload cache
+```
+
+### Dashboard & Monitoring
+```http
+GET /api/dashboard/                     # Web dashboard interface
+GET /api/dashboard/stats                # Dashboard statistics
+GET /api/dashboard/health               # System health status
+GET /api/dashboard/attractions/recent   # Recent attractions
+GET /api/dashboard/versions/{id}        # Attraction version history
 ```
 
 ### Root Information
 ```http
-GET /
+GET /                                   # API information and endpoints
 ```
 
 ## New Features
+
+### 1. 🤖 AI-powered Data Enrichment
+
+Automatically enhance attraction data using AI-powered text processing and analysis.
+
+**Environment Variables:**
+```env
+AI_PROCESSING_ENABLED=true
+AI_BATCH_SIZE=50
+```
+
+**Features:**
+- **Auto-summarize descriptions**: Convert long descriptions into concise, readable summaries
+- **Smart categorization**: Automatically classify attractions (ธรรมชาติ, วัฒนธรรม, ร้านอาหาร, ที่พัก, กิจกรรม, ช้อปปิ้ง)
+- **Popularity scoring**: AI-calculated popularity scores based on content analysis
+- **Thai language support**: Optimized for Thai tourism content with mixed Thai-English text
+
+**API Endpoints:**
+```http
+POST /api/attractions/process-ai    # Trigger AI processing
+GET  /api/attractions/stats         # View AI processing statistics
+```
+
+### 2. 🔍 Full-text Search & Recommendation System
+
+Advanced search capabilities with PostgreSQL full-text search and intelligent recommendations.
+
+**Features:**
+- **Full-text search**: PostgreSQL tsvector search with GIN indexes for both English and Thai content
+- **Smart recommendations**: Content-based filtering suggesting similar attractions
+- **Trending attractions**: Discover popular destinations by time period (day/week/month)
+- **Search suggestions**: Auto-complete functionality for better user experience
+- **Advanced filtering**: Filter by province, popularity score, categories, and AI processing status
+
+**API Endpoints:**
+```http
+GET /api/attractions/search?q=temple&province=Bangkok&min_score=7.0
+GET /api/attractions/{id}/recommendations?limit=5
+GET /api/attractions/trending?period=week&limit=10
+GET /api/attractions/suggestions?q=wat&limit=5
+```
+
+### 3. ⚡ Redis Caching & Performance Optimization
+
+Multi-level caching system for improved performance and scalability.
+
+**Environment Variables:**
+```env
+CACHE_DEFAULT_TIMEOUT=300
+CACHE_KEY_PREFIX=painaidee_
+```
+
+**Features:**
+- **Query-level caching**: Database query results cached with automatic invalidation
+- **API response caching**: Endpoint responses cached with intelligent key generation
+- **Preload system**: Frequently accessed data preloaded into cache
+- **Smart invalidation**: Automatic cache clearing when data is updated
+- **Cache statistics**: Monitoring and health check endpoints
+
+**API Endpoints:**
+```http
+POST /api/attractions/cache/clear     # Clear attraction cache
+POST /api/attractions/cache/preload   # Preload popular data
+```
+
+### 4. 🧪 Enhanced Testing & CI/CD
+
+Comprehensive testing suite with GitHub Actions integration.
+
+**Features:**
+- **Integration tests**: Complete ETL, AI processing, and API testing
+- **Coverage reporting**: Automated test coverage with Codecov integration
+- **Multi-environment testing**: PostgreSQL and Redis service containers
+- **Security scanning**: Trivy vulnerability scanning
+- **Automated workflows**: Test, build, and deploy pipeline
+
+**GitHub Actions Workflow:**
+- ✅ Unit and integration tests with coverage reporting
+- ✅ Multi-platform Docker builds (AMD64, ARM64)
+- ✅ Security vulnerability scanning
+- ✅ Automated dependency caching
 
 ### 1. Auto-Geocoding System
 
@@ -230,6 +324,13 @@ EXTERNAL_API_URL=https://jsonplaceholder.typicode.com/posts
 GOOGLE_GEOCODING_API_KEY=your-google-api-key-here
 USE_GOOGLE_GEOCODING=true
 
+# AI and ML
+AI_PROCESSING_ENABLED=true
+AI_BATCH_SIZE=50
+
+# Cache
+CACHE_DEFAULT_TIMEOUT=300
+
 # Backup
 BACKUP_DIR=/tmp/db_backups
 AUTO_BACKUP_BEFORE_SYNC=true
@@ -238,9 +339,12 @@ AUTO_BACKUP_BEFORE_SYNC=true
 ## Scheduled Tasks
 
 - **Daily Data Sync**: 1:00 AM - Fetch data from external API
-- **Daily Geocoding**: 2:00 AM - Geocode attractions without coordinates
+- **Daily Geocoding**: 2:00 AM - Geocode attractions without coordinates  
+- **Daily AI Processing**: 3:00 AM - Process attractions with AI features
+- **Daily Search Indexing**: 4:00 AM - Update search vectors and indexes
+- **Hourly Cache Preload**: Every hour - Preload popular data into cache
 - **Daily Backup**: 12:30 AM - Create database backup before sync
-- **Weekly Cleanup**: Sunday 3:00 AM - Clean up old versions and backups
+- **Weekly Cleanup**: Sunday 5:00 AM - Clean up old versions and backups
 
 ## Docker Commands
 
@@ -286,14 +390,23 @@ docker-compose --profile flower up -d
 # Test setup and configuration
 python test_setup.py
 
-# Run new feature tests
+# Run new AI features tests  
+python -m pytest test_ai_features.py -v
+
+# Run all feature tests
 python -m pytest test_new_features.py -v
 
-# Run all tests
-python -m pytest -v
+# Run all tests with coverage
+python -m pytest -v --cov=app --cov=tasks
 
 # Health check
 curl http://localhost:5000/api/health
+
+# Test search functionality
+curl "http://localhost:5000/api/attractions/search?q=temple"
+
+# Test AI processing
+curl -X POST http://localhost:5000/api/attractions/process-ai
 
 # Dashboard stats
 curl http://localhost:5000/api/dashboard/stats

@@ -41,6 +41,16 @@ class Config:
     BACKUP_DIR = os.environ.get('BACKUP_DIR', '/tmp/db_backups')
     BACKUP_RETENTION_DAYS = int(os.environ.get('BACKUP_RETENTION_DAYS', 7))
     AUTO_BACKUP_BEFORE_SYNC = os.environ.get('AUTO_BACKUP_BEFORE_SYNC', 'true').lower() == 'true'
+    
+    # AI and ML settings
+    AI_PROCESSING_ENABLED = os.environ.get('AI_PROCESSING_ENABLED', 'true').lower() == 'true'
+    AI_BATCH_SIZE = int(os.environ.get('AI_BATCH_SIZE', 50))
+    
+    # Cache settings
+    CACHE_TYPE = 'RedisCache'
+    CACHE_REDIS_URL = os.environ.get('REDIS_URL') or 'redis://localhost:6379/0'
+    CACHE_DEFAULT_TIMEOUT = int(os.environ.get('CACHE_DEFAULT_TIMEOUT', 300))
+    CACHE_KEY_PREFIX = 'painaidee_'
 
 
 class DevelopmentConfig(Config):

@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, date
+from sqlalchemy import or_
 from app import create_app, create_celery_app
 from etl_orchestrator import ETLOrchestrator
 from app.services.backup import get_backup_service
@@ -237,6 +238,164 @@ def cleanup_old_versions_task():
             
     except Exception as e:
         logger.error(f"Error in cleanup_old_versions_task: {str(e)}")
+        raise
+
+
+@celery.task
+def process_attractions_ai_task():
+    """Background task to process attractions with AI features."""
+    try:
+        with app.app_context():
+            from app.models import Attraction
+            from app.services.ai_service import get_ai_service
+            from app.services.cache_service import CacheService
+            
+            # Get configuration
+            batch_size = app.config.get('AI_BATCH_SIZE', 50)
+            ai_enabled = app.config.get('AI_PROCESSING_ENABLED', True)
+            
+            if not ai_enabled:
+                logger.info("AI processing is disabled")
+                return {'status': 'disabled'}
+            
+            # Find attractions that need AI processing
+            attractions_to_process = Attraction.query.filter(
+                Attraction.ai_processed == False,
+                Attraction.body.isnot(None)  # Only process attractions with descriptions
+            ).limit(batch_size).all()
+            
+            logger.info(f"Found {len(attractions_to_process)} attractions to process with AI")
+            
+            ai_service = get_ai_service()
+            processed_count = 0
+            failed_count = 0
+            
+            for attraction in attractions_to_process:
+                try:
+                    # Prepare attraction data for AI processing
+                    attraction_data = {
+                        'title': attraction.title,
+                        'body': attraction.body,
+                        'user_id': attraction.user_id
+                    }
+                    
+                    # Process with AI
+                    processed_data = ai_service.process_attraction_ai(attraction_data)
+                    
+                    # Update attraction with AI results
+                    attraction.ai_summary = processed_data.get('ai_summary')
+                    attraction.ai_tags = processed_data.get('ai_tags')
+                    attraction.popularity_score = processed_data.get('popularity_score', 0.0)
+                    attraction.ai_processed = True
+                    
+                    # Generate search vector
+                    attraction.search_vector = ai_service.generate_search_vector(
+                        attraction.title, attraction.body, attraction.ai_summary
+                    )
+                    
+                    db.session.commit()
+                    processed_count += 1
+                    
+                    logger.info(f"AI processed attraction {attraction.id}: {attraction.title}")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing attraction {attraction.id} with AI: {str(e)}")
+                    failed_count += 1
+                    db.session.rollback()
+                    continue
+            
+            # Invalidate cache for updated attractions
+            CacheService.invalidate_attraction_cache()
+            
+            result = {
+                'total_processed': len(attractions_to_process),
+                'success_count': processed_count,
+                'failed_count': failed_count,
+                'status': 'completed'
+            }
+            
+            logger.info(f"AI processing task completed: {result}")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in AI processing task: {str(e)}")
+        raise
+
+
+@celery.task
+def preload_cache_task():
+    """Background task to preload frequently accessed data into cache."""
+    try:
+        with app.app_context():
+            from app.services.cache_service import CacheService
+            
+            logger.info("Starting cache preload task")
+            
+            # Preload popular data
+            CacheService.preload_popular_data()
+            
+            result = {
+                'status': 'completed',
+                'message': 'Cache preloaded successfully'
+            }
+            
+            logger.info(f"Cache preload task completed: {result}")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in cache preload task: {str(e)}")
+        raise
+
+
+@celery.task
+def update_search_vectors_task():
+    """Background task to update search vectors for attractions."""
+    try:
+        with app.app_context():
+            from app.models import Attraction
+            from app.services.ai_service import get_ai_service
+            
+            # Find attractions that need search vector updates
+            attractions_to_update = Attraction.query.filter(
+                or_(
+                    Attraction.search_vector.is_(None),
+                    Attraction.search_vector == ''
+                )
+            ).limit(100).all()
+            
+            logger.info(f"Found {len(attractions_to_update)} attractions to update search vectors")
+            
+            ai_service = get_ai_service()
+            updated_count = 0
+            
+            for attraction in attractions_to_update:
+                try:
+                    # Generate search vector
+                    attraction.search_vector = ai_service.generate_search_vector(
+                        attraction.title, 
+                        attraction.body or '', 
+                        attraction.ai_summary or ''
+                    )
+                    
+                    db.session.commit()
+                    updated_count += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error updating search vector for attraction {attraction.id}: {str(e)}")
+                    db.session.rollback()
+                    continue
+            
+            result = {
+                'total_processed': len(attractions_to_update),
+                'updated_count': updated_count,
+                'status': 'completed'
+            }
+            
+            logger.info(f"Search vector update task completed: {result}")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in search vector update task: {str(e)}")
         raise
 
 

@@ -24,6 +24,10 @@ def create_app(config_name=None):
     db.init_app(app)
     migrate.init_app(app, db)
     
+    # Initialize cache
+    from app.services.cache_service import init_cache
+    init_cache(app)
+    
     # Register blueprints
     from app.routes.attractions import attractions_bp
     from app.routes.dashboard import dashboard_bp
@@ -35,18 +39,35 @@ def create_app(config_name=None):
     def index():
         return {
             'message': 'Painaidee Database API',
-            'version': '1.0.0',
+            'version': '2.0.0',
+            'features': [
+                'AI-powered data enrichment',
+                'Full-text search',
+                'Recommendation system', 
+                'Advanced caching',
+                'Real-time dashboard'
+            ],
             'endpoints': {
                 'health': '/api/health',
                 'attractions': '/api/attractions',
+                'search': '/api/attractions/search',
+                'recommendations': '/api/attractions/{id}/recommendations',
+                'trending': '/api/attractions/trending',
                 'sync': '/api/attractions/sync',
                 'dashboard': '/api/dashboard'
             }
         }
     
-    # Create tables
+    # Create tables and search indexes
     with app.app_context():
         db.create_all()
+        
+        # Create search indexes
+        try:
+            from app.services.search_service import SearchService
+            SearchService.create_search_indexes()
+        except Exception as e:
+            app.logger.warning(f"Could not create search indexes: {str(e)}")
     
     return app
 

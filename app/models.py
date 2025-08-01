@@ -18,6 +18,13 @@ class Attraction(db.Model):
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
     geocoded = db.Column(db.Boolean, default=False)
+    # AI-powered fields
+    ai_summary = db.Column(db.Text, nullable=True)  # AI-generated summary
+    ai_tags = db.Column(db.Text, nullable=True)  # JSON string of AI-generated tags
+    popularity_score = db.Column(db.Float, default=0.0)  # AI-calculated popularity score
+    ai_processed = db.Column(db.Boolean, default=False)  # Whether AI processing is complete
+    # Full-text search
+    search_vector = db.Column(db.Text, nullable=True)  # For PostgreSQL tsvector search
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -26,6 +33,7 @@ class Attraction(db.Model):
     
     def to_dict(self):
         """Convert attraction to dictionary."""
+        import json
         return {
             'id': self.id,
             'external_id': self.external_id,
@@ -36,6 +44,10 @@ class Attraction(db.Model):
             'latitude': self.latitude,
             'longitude': self.longitude,
             'geocoded': self.geocoded,
+            'ai_summary': self.ai_summary,
+            'ai_tags': json.loads(self.ai_tags) if self.ai_tags else [],
+            'popularity_score': self.popularity_score,
+            'ai_processed': self.ai_processed,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -51,7 +63,11 @@ class Attraction(db.Model):
             province=data.get('province'),
             latitude=data.get('latitude'),
             longitude=data.get('longitude'),
-            geocoded=data.get('geocoded', False)
+            geocoded=data.get('geocoded', False),
+            ai_summary=data.get('ai_summary'),
+            ai_tags=data.get('ai_tags'),
+            popularity_score=data.get('popularity_score', 0.0),
+            ai_processed=data.get('ai_processed', False)
         )
 
 
