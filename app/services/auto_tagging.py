@@ -178,12 +178,18 @@ class AutoTagger:
     def get_suggested_tags_for_type(self, attraction_type: str) -> List[str]:
         """Get suggested tags for a specific attraction type."""
         if attraction_type == 'temple':
-            return list(self.temple_keywords)[:10]
+            # Prioritize the key term, then sort the rest
+            tags = ['temple'] + sorted([tag for tag in self.temple_keywords if tag != 'temple'])
+            return tags[:10]
         elif attraction_type == 'waterfall':
-            return list(self.waterfall_keywords)[:10]
+            tags = ['waterfall'] + sorted([tag for tag in self.waterfall_keywords if tag != 'waterfall'])
+            return tags[:10]
         elif attraction_type == 'beach':
-            return list(self.beach_keywords)[:10]
+            tags = ['beach'] + sorted([tag for tag in self.beach_keywords if tag != 'beach'])
+            return tags[:10]
         elif attraction_type == 'mountain':
-            return list(self.mountain_keywords)[:10]
+            tags = ['mountain'] + sorted([tag for tag in self.mountain_keywords if tag != 'mountain'])
+            return tags[:10]
         else:
-            return list(self.activity_tags)[:10]
+            tags = sorted(list(self.activity_tags))
+            return tags[:10]
