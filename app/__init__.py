@@ -29,10 +29,12 @@ def create_app(config_name=None):
     from app.routes.dashboard import dashboard_bp
     from app.routes.ai_features import ai_bp
     from app.routes.behavior_intelligence import behavior_bp
+    from app.routes.data_cleaning import data_cleaning_bp
     app.register_blueprint(attractions_bp, url_prefix='/api')
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
     app.register_blueprint(behavior_bp, url_prefix='/api')
+    app.register_blueprint(data_cleaning_bp)
     
     # Add a simple root route
     @app.route('/')
