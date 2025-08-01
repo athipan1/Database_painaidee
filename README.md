@@ -37,6 +37,20 @@
 - Government tourism analytics
 - Travel agency management systems
 
+### Architecture Overview
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Flask API     │    │   Background    │
+│   (Mobile/Web)  │◄──►│   (REST/AI)     │◄──►│   Workers       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │                       │
+                                ▼                       ▼
+                       ┌─────────────────┐    ┌─────────────────┐
+                       │   PostgreSQL    │    │     Redis       │
+                       │   (Data Store)  │    │   (Queue/Cache) │
+                       └─────────────────┘    └─────────────────┘
+```
+
 ## Features
 
 ### Core Infrastructure
@@ -282,30 +296,49 @@ docker-compose --profile loadbalancer up -d
 
 ## Environment Variables
 
-Key environment variables (see `.env.example` for all options):
+Configure the application by copying `.env.example` to `.env` and updating the values:
 
+### Required Variables
 ```env
-# Flask
+# Flask Application
 FLASK_ENV=development
-SECRET_KEY=your-secret-key
+SECRET_KEY=your-secret-key-here
 
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/painaidee_db
+# Database Configuration
+DATABASE_URL=postgresql://user:password@db:5432/painaidee_db
+POSTGRES_DB=painaidee_db
+POSTGRES_USER=user
+POSTGRES_PASSWORD=password
 
-# Redis
-REDIS_URL=redis://localhost:6379/0
-CELERY_BROKER_URL=redis://localhost:6379/0
+# Redis Configuration  
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+```
 
-# External API
+### Optional Variables
+```env
+# External API Settings
 EXTERNAL_API_URL=https://jsonplaceholder.typicode.com/posts
+API_TIMEOUT=30
 
-# Geocoding
+# Pagination
+PAGINATION_ENABLED=true
+PAGINATION_PAGE_SIZE=20
+PAGINATION_MAX_PAGES=100
+
+# Geocoding (Optional - for location services)
 GOOGLE_GEOCODING_API_KEY=your-google-api-key-here
 USE_GOOGLE_GEOCODING=true
+GEOCODING_TIMEOUT=10
 
-# Backup
+# Backup Configuration
 BACKUP_DIR=/tmp/db_backups
+BACKUP_RETENTION_DAYS=7
 AUTO_BACKUP_BEFORE_SYNC=true
+
+# Development Settings
+DEBUG=True
+TESTING=False
 ```
 
 ## Scheduled Tasks
@@ -446,14 +479,37 @@ docker-compose logs web | grep dashboard
 
 ## Contributing
 
+We welcome contributions to Database Painaidee! Here's how to get started:
+
+### Development Setup
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Update documentation
-6. Test thoroughly
-7. Submit a pull request
+2. Clone your fork locally
+3. Create a virtual environment: `python -m venv venv`
+4. Activate it: `source venv/bin/activate` (Linux/Mac) or `venv\Scripts\activate` (Windows)
+5. Install dependencies: `pip install -r requirements.txt`
+6. Copy `.env.example` to `.env` and configure
+
+### Making Changes
+1. Create a feature branch: `git checkout -b feature/your-feature-name`
+2. Make your changes with clear, focused commits
+3. Add tests for new functionality
+4. Update documentation as needed
+5. Ensure all tests pass: `python -m pytest`
+
+### Submitting Changes
+1. Push your changes to your fork
+2. Create a Pull Request with a clear description
+3. Ensure CI tests pass
+4. Respond to code review feedback
+
+### Areas for Contribution
+- 🔧 API endpoint improvements
+- 🤖 AI/ML model enhancements  
+- 📊 Dashboard features
+- 🌐 Internationalization (i18n)
+- 📚 Documentation improvements
+- 🧪 Test coverage expansion
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
