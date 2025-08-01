@@ -31,6 +31,16 @@ class Config:
     PAGINATION_ENABLED = os.environ.get('PAGINATION_ENABLED', 'true').lower() == 'true'
     PAGINATION_PAGE_SIZE = int(os.environ.get('PAGINATION_PAGE_SIZE', 20))
     PAGINATION_MAX_PAGES = int(os.environ.get('PAGINATION_MAX_PAGES', 100))  # Safety limit
+    
+    # Geocoding settings
+    GOOGLE_GEOCODING_API_KEY = os.environ.get('GOOGLE_GEOCODING_API_KEY')
+    USE_GOOGLE_GEOCODING = os.environ.get('USE_GOOGLE_GEOCODING', 'true').lower() == 'true'
+    GEOCODING_TIMEOUT = int(os.environ.get('GEOCODING_TIMEOUT', 10))
+    
+    # Backup settings
+    BACKUP_DIR = os.environ.get('BACKUP_DIR', '/tmp/db_backups')
+    BACKUP_RETENTION_DAYS = int(os.environ.get('BACKUP_RETENTION_DAYS', 7))
+    AUTO_BACKUP_BEFORE_SYNC = os.environ.get('AUTO_BACKUP_BEFORE_SYNC', 'true').lower() == 'true'
 
 
 class DevelopmentConfig(Config):

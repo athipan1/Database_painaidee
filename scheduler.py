@@ -30,6 +30,18 @@ celery_app.conf.update(
             'task': 'tasks.fetch_attractions_task',
             'schedule': crontab(hour=1, minute=0),  # Run at 1:00 AM daily
         },
+        'geocode-attractions-daily': {
+            'task': 'tasks.geocode_attractions_task',
+            'schedule': crontab(hour=2, minute=0),  # Run at 2:00 AM daily (after sync)
+        },
+        'backup-database-daily': {
+            'task': 'tasks.backup_database_task',
+            'schedule': crontab(hour=0, minute=30),  # Run at 12:30 AM daily (before sync)
+        },
+        'cleanup-old-versions-weekly': {
+            'task': 'tasks.cleanup_old_versions_task',
+            'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Run at 3:00 AM every Sunday
+        },
     },
 )
 

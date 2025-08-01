@@ -26,7 +26,9 @@ def create_app(config_name=None):
     
     # Register blueprints
     from app.routes.attractions import attractions_bp
+    from app.routes.dashboard import dashboard_bp
     app.register_blueprint(attractions_bp, url_prefix='/api')
+    app.register_blueprint(dashboard_bp)
     
     # Add a simple root route
     @app.route('/')
@@ -37,7 +39,8 @@ def create_app(config_name=None):
             'endpoints': {
                 'health': '/api/health',
                 'attractions': '/api/attractions',
-                'sync': '/api/attractions/sync'
+                'sync': '/api/attractions/sync',
+                'dashboard': '/api/dashboard'
             }
         }
     

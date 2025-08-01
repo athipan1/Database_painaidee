@@ -22,7 +22,9 @@ class ETLOrchestrator:
         enable_pagination: bool = False,
         page_size: int = 20,
         max_pages: int = 100,
-        use_memory_efficient: bool = False
+        use_memory_efficient: bool = False,
+        enable_geocoding: bool = False,
+        google_api_key: str = None
     ) -> Dict[str, Any]:
         """
         Run ETL process for external API data.
@@ -34,6 +36,8 @@ class ETLOrchestrator:
             page_size: Number of items per page (when pagination enabled)
             max_pages: Maximum number of pages to fetch (safety limit)
             use_memory_efficient: Whether to process data page by page (memory efficient)
+            enable_geocoding: Whether to attempt geocoding for missing coordinates
+            google_api_key: Google API key for geocoding (optional)
             
         Returns:
             Dictionary with ETL results
@@ -62,8 +66,10 @@ class ETLOrchestrator:
                 for page_num, raw_data in extractor.extract_paginated():
                     logger.info(f"Processing page {page_num} with {len(raw_data)} items")
                     
-                    # Transform page data
-                    attractions = AttractionTransformer.transform_external_api_data(raw_data)
+                    # Transform page data with optional geocoding
+                    attractions = AttractionTransformer.transform_external_api_data(
+                        raw_data, enable_geocoding, google_api_key
+                    )
                     
                     # Load page data
                     page_result = AttractionLoader.load_attractions(attractions)
@@ -89,8 +95,10 @@ class ETLOrchestrator:
                 # Extract all data
                 raw_data = extractor.extract()
                 
-                # Transform
-                attractions = AttractionTransformer.transform_external_api_data(raw_data)
+                # Transform with optional geocoding
+                attractions = AttractionTransformer.transform_external_api_data(
+                    raw_data, enable_geocoding, google_api_key
+                )
                 
                 # Load
                 result = AttractionLoader.load_attractions(attractions)

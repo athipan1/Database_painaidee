@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Painaidee Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .card h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.2rem;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .metric:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            color: #666;
+        }
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+        .status-healthy {
+            color: #28a745;
+        }
+        .status-warning {
+            color: #ffc107;
+        }
+        .status-error {
+            color: #dc3545;
+        }
+        .chart-container {
+            grid-column: 1 / -1;
+            height: 400px;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+        .refresh-btn:hover {
+            background: #5a6fd8;
+        }
+        .recent-attractions {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .attraction-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .attraction-title {
+            font-weight: bold;
+            color: #333;
+        }
+        .attraction-meta {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗄️ Database Painaidee Dashboard</h1>
+        <p>Real-time monitoring of ETL operations and data synchronization</p>
+    </div>
+
+    <button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh Data</button>
+
+    <div id="loading" class="loading">Loading dashboard data...</div>
+    <div id="error" class="error" style="display: none;"></div>
+
+    <div id="dashboard-content" style="display: none;">
+        <div class="dashboard-grid">
+            <!-- Summary Stats -->
+            <div class="card">
+                <h3>📊 Summary Statistics</h3>
+                <div class="metric">
+                    <span class="metric-label">Total Attractions</span>
+                    <span class="metric-value" id="total-attractions">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Geocoded Attractions</span>
+                    <span class="metric-value" id="geocoded-attractions">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Geocoding Rate</span>
+                    <span class="metric-value" id="geocoding-rate">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Versions</span>
+                    <span class="metric-value" id="total-versions">-</span>
+                </div>
+            </div>
+
+            <!-- Today's Stats -->
+            <div class="card">
+                <h3>📅 Today's Sync</h3>
+                <div class="metric">
+                    <span class="metric-label">Processed</span>
+                    <span class="metric-value" id="today-processed">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Saved</span>
+                    <span class="metric-value status-healthy" id="today-saved">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Errors</span>
+                    <span class="metric-value status-error" id="today-errors">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Success Rate</span>
+                    <span class="metric-value" id="today-success-rate">-</span>
+                </div>
+            </div>
+
+            <!-- Performance Stats -->
+            <div class="card">
+                <h3>⚡ Performance (7-day avg)</h3>
+                <div class="metric">
+                    <span class="metric-label">Success Rate</span>
+                    <span class="metric-value" id="avg-success-rate">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Processing Time</span>
+                    <span class="metric-value" id="avg-processing-time">-</span>
+                </div>
+            </div>
+
+            <!-- Recent Attractions -->
+            <div class="card">
+                <h3>🆕 Recent Attractions</h3>
+                <div id="recent-attractions" class="recent-attractions">
+                    Loading...
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="card chart-container">
+                <h3>📈 30-Day Sync History</h3>
+                <canvas id="syncChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+
+        async function loadDashboard() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const content = document.getElementById('dashboard-content');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            content.style.display = 'none';
+
+            try {
+                // Load dashboard stats
+                const response = await fetch('/api/dashboard/stats');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                updateDashboard(data);
+
+                // Load recent attractions
+                const attractionsResponse = await fetch('/api/dashboard/attractions/recent');
+                if (attractionsResponse.ok) {
+                    const attractionsData = await attractionsResponse.json();
+                    updateRecentAttractions(attractionsData.attractions);
+                }
+
+                loading.style.display = 'none';
+                content.style.display = 'block';
+
+            } catch (err) {
+                console.error('Error loading dashboard:', err);
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = `Error loading dashboard: ${err.message}`;
+            }
+        }
+
+        function updateDashboard(data) {
+            // Summary stats
+            document.getElementById('total-attractions').textContent = data.summary.total_attractions.toLocaleString();
+            document.getElementById('geocoded-attractions').textContent = data.summary.geocoded_attractions.toLocaleString();
+            document.getElementById('geocoding-rate').textContent = `${data.summary.geocoded_percentage}%`;
+            document.getElementById('total-versions').textContent = data.summary.total_versions.toLocaleString();
+
+            // Today's stats
+            document.getElementById('today-processed').textContent = data.today.processed.toLocaleString();
+            document.getElementById('today-saved').textContent = data.today.saved.toLocaleString();
+            document.getElementById('today-errors').textContent = data.today.errors.toLocaleString();
+            document.getElementById('today-success-rate').textContent = `${data.today.success_rate}%`;
+
+            // Performance stats
+            document.getElementById('avg-success-rate').textContent = `${data.summary.avg_success_rate}%`;
+            document.getElementById('avg-processing-time').textContent = `${data.summary.avg_processing_time}s`;
+
+            // Update chart
+            updateChart(data.chart_data);
+        }
+
+        function updateRecentAttractions(attractions) {
+            const container = document.getElementById('recent-attractions');
+            
+            if (attractions.length === 0) {
+                container.innerHTML = '<p>No recent attractions found.</p>';
+                return;
+            }
+
+            container.innerHTML = attractions.map(attraction => `
+                <div class="attraction-item">
+                    <div class="attraction-title">${attraction.title}</div>
+                    <div class="attraction-meta">
+                        ID: ${attraction.id} | 
+                        ${attraction.geocoded ? '📍 Geocoded' : '📍 Not geocoded'} | 
+                        ${attraction.version_count} versions |
+                        Updated: ${new Date(attraction.updated_at).toLocaleDateString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateChart(chartData) {
+            const ctx = document.getElementById('syncChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.dates.map(date => new Date(date).toLocaleDateString()),
+                    datasets: [
+                        {
+                            label: 'Processed',
+                            data: chartData.processed,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Saved',
+                            data: chartData.saved,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Errors',
+                            data: chartData.errors,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    }
+                }
+            });
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadDashboard, 30000);
+
+        // Load dashboard on page load
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
+</body>
+</html>
