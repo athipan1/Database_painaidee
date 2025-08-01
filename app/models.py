@@ -23,6 +23,19 @@ class Attraction(db.Model):
     keywords_extracted = db.Column(db.Boolean, default=False)
     content_rewritten = db.Column(db.Boolean, default=False)
     view_count = db.Column(db.Integer, default=0)  # For trend analysis
+    
+    # AI Content Enrichment Features
+    content_enriched = db.Column(db.Boolean, default=False)
+    key_features = db.Column(db.Text, nullable=True)  # JSON string of key features
+    generated_images = db.Column(db.Text, nullable=True)  # JSON string of image URLs
+    
+    # Multilingual Content
+    title_en = db.Column(db.Text, nullable=True)  # English title
+    title_th = db.Column(db.Text, nullable=True)  # Thai title
+    title_zh = db.Column(db.Text, nullable=True)  # Chinese title
+    body_en = db.Column(db.Text, nullable=True)   # English description
+    body_th = db.Column(db.Text, nullable=True)   # Thai description
+    body_zh = db.Column(db.Text, nullable=True)   # Chinese description
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -45,6 +58,15 @@ class Attraction(db.Model):
             'keywords_extracted': self.keywords_extracted,
             'content_rewritten': self.content_rewritten,
             'view_count': self.view_count,
+            'content_enriched': self.content_enriched,
+            'key_features': self.key_features,
+            'generated_images': self.generated_images,
+            'title_en': self.title_en,
+            'title_th': self.title_th,
+            'title_zh': self.title_zh,
+            'body_en': self.body_en,
+            'body_th': self.body_th,
+            'body_zh': self.body_zh,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

@@ -29,6 +29,14 @@ from app.services.conversational_ai import (
     get_contextual_response,
     update_session_preferences
 )
+from app.services.content_enrichment import (
+    ContentEnrichmentService,
+    enrich_attraction_content,
+    generate_place_description,
+    translate_content,
+    extract_key_features,
+    generate_attraction_images
+)
 
 ai_bp = Blueprint('ai', __name__)
 
@@ -623,6 +631,319 @@ def get_session_info(session_id):
         return jsonify({
             'success': True,
             'session': session_context
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Content Enrichment Endpoints
+
+@ai_bp.route('/enrich/description', methods=['POST'])
+def generate_description():
+    """Generate enhanced description for an attraction using GPT or fallback methods."""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    if 'attraction_id' in data:
+        # Generate description for specific attraction
+        attraction = Attraction.query.get(data['attraction_id'])
+        if not attraction:
+            return jsonify({'error': 'Attraction not found'}), 404
+        
+        attraction_data = {
+            'id': attraction.id,
+            'title': attraction.title,
+            'body': attraction.body,
+            'province': attraction.province
+        }
+        
+        result = generate_place_description(attraction_data)
+        
+        # Optionally update the attraction if requested
+        if data.get('apply_changes', False) and result['success']:
+            attraction.body = result['description']
+            attraction.content_enriched = True
+            db.session.commit()
+        
+        result['attraction_id'] = attraction.id
+        result['changes_applied'] = data.get('apply_changes', False)
+        
+        return jsonify(result)
+    
+    elif all(key in data for key in ['title']):
+        # Generate description from provided data
+        attraction_data = {
+            'title': data['title'],
+            'body': data.get('body', ''),
+            'province': data.get('province', '')
+        }
+        
+        result = generate_place_description(attraction_data)
+        return jsonify(result)
+    
+    else:
+        return jsonify({'error': 'Either attraction_id or title must be provided'}), 400
+
+
+@ai_bp.route('/enrich/multilingual', methods=['POST'])
+def translate_multilingual():
+    """Generate multilingual versions of content."""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    if 'attraction_id' in data:
+        # Translate content for specific attraction
+        attraction = Attraction.query.get(data['attraction_id'])
+        if not attraction:
+            return jsonify({'error': 'Attraction not found'}), 404
+        
+        # Choose which field/content to translate
+        field = data.get('field', 'body')  # 'title', 'body', or 'description'
+        if field == 'title':
+            text_to_translate = attraction.title
+        elif field == 'body':
+            text_to_translate = attraction.body
+        else:
+            return jsonify({'error': 'Invalid field. Use title or body'}), 400
+        
+        if not text_to_translate:
+            return jsonify({'error': f'No {field} content to translate'}), 400
+        
+        target_languages = data.get('languages', ['en', 'th', 'zh'])
+        result = translate_content(text_to_translate, target_languages)
+        
+        # Optionally update the attraction if requested
+        if data.get('apply_changes', False) and result['success']:
+            translations = result['translations']
+            
+            if field == 'title':
+                attraction.title_en = translations.get('en')
+                attraction.title_th = translations.get('th')
+                attraction.title_zh = translations.get('zh')
+            elif field == 'body':
+                attraction.body_en = translations.get('en')
+                attraction.body_th = translations.get('th')
+                attraction.body_zh = translations.get('zh')
+            
+            attraction.content_enriched = True
+            db.session.commit()
+        
+        result['attraction_id'] = attraction.id
+        result['field'] = field
+        result['changes_applied'] = data.get('apply_changes', False)
+        
+        return jsonify(result)
+    
+    elif 'text' in data:
+        # Translate provided text
+        text = data['text']
+        target_languages = data.get('languages', ['en', 'th', 'zh'])
+        
+        result = translate_content(text, target_languages)
+        return jsonify(result)
+    
+    else:
+        return jsonify({'error': 'Either attraction_id or text must be provided'}), 400
+
+
+@ai_bp.route('/enrich/features', methods=['POST'])
+def highlight_key_features():
+    """Extract and highlight key features from attraction content."""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    if 'attraction_id' in data:
+        # Extract features for specific attraction
+        attraction = Attraction.query.get(data['attraction_id'])
+        if not attraction:
+            return jsonify({'error': 'Attraction not found'}), 404
+        
+        # Combine title and body for analysis
+        text_to_analyze = f"{attraction.title or ''} {attraction.body or ''}".strip()
+        
+        if not text_to_analyze:
+            return jsonify({'error': 'No content to analyze'}), 400
+        
+        result = extract_key_features(text_to_analyze)
+        
+        # Optionally update the attraction if requested
+        if data.get('apply_changes', False) and result['success']:
+            import json
+            attraction.key_features = json.dumps(result['features'])
+            attraction.content_enriched = True
+            db.session.commit()
+        
+        result['attraction_id'] = attraction.id
+        result['changes_applied'] = data.get('apply_changes', False)
+        
+        return jsonify(result)
+    
+    elif 'text' in data:
+        # Extract features from provided text
+        text = data['text']
+        result = extract_key_features(text)
+        return jsonify(result)
+    
+    else:
+        return jsonify({'error': 'Either attraction_id or text must be provided'}), 400
+
+
+@ai_bp.route('/enrich/images', methods=['POST'])
+def generate_images():
+    """Generate images for attraction using DALL-E or placeholder methods."""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    if 'attraction_id' in data:
+        # Generate images for specific attraction
+        attraction = Attraction.query.get(data['attraction_id'])
+        if not attraction:
+            return jsonify({'error': 'Attraction not found'}), 404
+        
+        attraction_data = {
+            'id': attraction.id,
+            'title': attraction.title,
+            'body': attraction.body,
+            'province': attraction.province
+        }
+        
+        num_images = data.get('num_images', 1)
+        result = generate_attraction_images(attraction_data, num_images)
+        
+        # Optionally update the attraction if requested
+        if data.get('apply_changes', False) and result['success']:
+            import json
+            attraction.generated_images = json.dumps(result['image_urls'])
+            attraction.content_enriched = True
+            db.session.commit()
+        
+        result['attraction_id'] = attraction.id
+        result['changes_applied'] = data.get('apply_changes', False)
+        
+        return jsonify(result)
+    
+    elif 'title' in data:
+        # Generate images from provided data
+        attraction_data = {
+            'title': data['title'],
+            'body': data.get('body', ''),
+            'province': data.get('province', '')
+        }
+        
+        num_images = data.get('num_images', 1)
+        result = generate_attraction_images(attraction_data, num_images)
+        return jsonify(result)
+    
+    else:
+        return jsonify({'error': 'Either attraction_id or title must be provided'}), 400
+
+
+@ai_bp.route('/enrich/complete', methods=['POST'])
+def complete_enrichment():
+    """Perform complete content enrichment for an attraction (all features)."""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    if 'attraction_id' in data:
+        # Complete enrichment for specific attraction
+        attraction = Attraction.query.get(data['attraction_id'])
+        if not attraction:
+            return jsonify({'error': 'Attraction not found'}), 404
+        
+        attraction_data = {
+            'id': attraction.id,
+            'title': attraction.title,
+            'body': attraction.body,
+            'province': attraction.province
+        }
+        
+        result = enrich_attraction_content(attraction_data)
+        
+        # Optionally update the attraction if requested
+        if data.get('apply_changes', False) and result['success']:
+            import json
+            
+            # Update description if generated
+            if result['features'].get('description', {}).get('success'):
+                attraction.body = result['features']['description']['description']
+            
+            # Update multilingual content if generated
+            if result['features'].get('multilingual', {}).get('success'):
+                translations = result['features']['multilingual']['translations']
+                attraction.title_en = translations.get('en')
+                attraction.title_th = translations.get('th')
+                attraction.title_zh = translations.get('zh')
+                attraction.body_en = translations.get('en')
+                attraction.body_th = translations.get('th')
+                attraction.body_zh = translations.get('zh')
+            
+            # Update key features if extracted
+            if result['features'].get('key_features', {}).get('success'):
+                attraction.key_features = json.dumps(result['features']['key_features']['features'])
+            
+            # Update images if generated
+            if result['features'].get('images', {}).get('success'):
+                attraction.generated_images = json.dumps(result['features']['images']['image_urls'])
+            
+            attraction.content_enriched = True
+            db.session.commit()
+        
+        result['attraction_id'] = attraction.id
+        result['changes_applied'] = data.get('apply_changes', False)
+        
+        return jsonify(result)
+    
+    else:
+        return jsonify({'error': 'attraction_id is required'}), 400
+
+
+@ai_bp.route('/enrich/stats', methods=['GET'])
+def get_enrichment_stats():
+    """Get content enrichment statistics."""
+    try:
+        total_attractions = Attraction.query.count()
+        enriched_attractions = Attraction.query.filter_by(content_enriched=True).count()
+        
+        with_multilingual = Attraction.query.filter(
+            (Attraction.title_en.isnot(None)) |
+            (Attraction.title_th.isnot(None)) |
+            (Attraction.title_zh.isnot(None)) |
+            (Attraction.body_en.isnot(None)) |
+            (Attraction.body_th.isnot(None)) |
+            (Attraction.body_zh.isnot(None))
+        ).count()
+        
+        with_features = Attraction.query.filter(Attraction.key_features.isnot(None)).count()
+        with_images = Attraction.query.filter(Attraction.generated_images.isnot(None)).count()
+        
+        return jsonify({
+            'total_attractions': total_attractions,
+            'enriched_attractions': enriched_attractions,
+            'enrichment_coverage': round((enriched_attractions / total_attractions * 100), 2) if total_attractions > 0 else 0,
+            'features': {
+                'multilingual_content': {
+                    'count': with_multilingual,
+                    'coverage': round((with_multilingual / total_attractions * 100), 2) if total_attractions > 0 else 0
+                },
+                'key_features': {
+                    'count': with_features,
+                    'coverage': round((with_features / total_attractions * 100), 2) if total_attractions > 0 else 0
+                },
+                'generated_images': {
+                    'count': with_images,
+                    'coverage': round((with_images / total_attractions * 100), 2) if total_attractions > 0 else 0
+                }
+            }
         })
         
     except Exception as e:
