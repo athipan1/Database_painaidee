@@ -13,3 +13,10 @@ Flask-Migrate==4.0.5
 tenacity==8.2.3
 pytest>=6.0.0,<9.0.0
 pytest-mock>=3.6.0,<4.0.0
+# AI/ML dependencies (lightweight versions)
+# Note: transformers, torch, spacy are optional and fallback methods are available
+# For basic functionality, only these are needed:
+# scikit-learn>=1.0.0  # Optional - fallback methods available
+# numpy>=1.20.0  # Usually available in system
+matplotlib>=3.5.0
+seaborn>=0.11.0

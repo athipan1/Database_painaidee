@@ -4,7 +4,10 @@ from app import create_app, create_celery_app
 from etl_orchestrator import ETLOrchestrator
 from app.services.backup import get_backup_service
 from app.services.geocoding import get_geocoding_service
-from app.models import db, SyncStatistics
+from app.services.keyword_extraction import extract_keywords_from_attraction, keywords_to_json
+from app.services.recommendation import RecommendationEngine
+from app.services.content_rewriter import improve_attraction_content
+from app.models import db, SyncStatistics, Attraction
 import requests
 import time
 
@@ -245,6 +248,183 @@ def test_task():
     """Simple test task."""
     logger.info("Test task executed successfully")
     return "Task completed successfully"
+
+
+@celery.task(bind=True)
+def extract_keywords_batch_task(self, attraction_ids=None, limit=None):
+    """Background task to extract keywords for attractions."""
+    try:
+        with app.app_context():
+            if attraction_ids:
+                # Process specific attractions
+                attractions = Attraction.query.filter(Attraction.id.in_(attraction_ids)).all()
+            else:
+                # Process attractions without keywords
+                query = Attraction.query.filter_by(keywords_extracted=False)
+                if limit:
+                    query = query.limit(limit)
+                attractions = query.all()
+            
+            processed = 0
+            successful = 0
+            failed = 0
+            
+            for attraction in attractions:
+                try:
+                    attraction_data = {
+                        'title': attraction.title,
+                        'body': attraction.body
+                    }
+                    
+                    keywords = extract_keywords_from_attraction(attraction_data)
+                    
+                    if keywords:
+                        attraction.keywords = keywords_to_json(keywords)
+                        attraction.keywords_extracted = True
+                        successful += 1
+                    else:
+                        attraction.keywords_extracted = True  # Mark as processed even if no keywords
+                        
+                    processed += 1
+                    
+                    # Commit in batches
+                    if processed % 10 == 0:
+                        db.session.commit()
+                        logger.info(f"Processed {processed} attractions so far...")
+                        
+                except Exception as e:
+                    logger.error(f"Error extracting keywords for attraction {attraction.id}: {str(e)}")
+                    failed += 1
+                    continue
+            
+            # Final commit
+            db.session.commit()
+            
+            result = {
+                'total_processed': processed,
+                'successful': successful,
+                'failed': failed
+            }
+            
+            logger.info(f"Keyword extraction task completed: {result}")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in extract_keywords_batch_task: {str(e)}")
+        raise
+
+
+@celery.task(bind=True)
+def improve_content_batch_task(self, attraction_ids=None, field='body', style='friendly', limit=None):
+    """Background task to improve content for attractions."""
+    try:
+        with app.app_context():
+            if attraction_ids:
+                # Process specific attractions
+                attractions = Attraction.query.filter(Attraction.id.in_(attraction_ids)).all()
+            else:
+                # Process attractions without improved content
+                query = Attraction.query.filter_by(content_rewritten=False)
+                if limit:
+                    query = query.limit(limit)
+                attractions = query.all()
+            
+            processed = 0
+            successful = 0
+            failed = 0
+            
+            for attraction in attractions:
+                try:
+                    if field == 'title':
+                        original_text = attraction.title
+                    else:
+                        original_text = attraction.body
+                    
+                    if not original_text:
+                        processed += 1
+                        continue
+                    
+                    result = improve_attraction_content(
+                        text=original_text,
+                        style=style,
+                        max_length=500
+                    )
+                    
+                    if result['success']:
+                        if field == 'title':
+                            attraction.title = result['improved_text']
+                        else:
+                            attraction.body = result['improved_text']
+                        
+                        attraction.content_rewritten = True
+                        successful += 1
+                    
+                    processed += 1
+                    
+                    # Commit in batches
+                    if processed % 10 == 0:
+                        db.session.commit()
+                        logger.info(f"Processed {processed} attractions so far...")
+                        
+                    # Add small delay to prevent overwhelming the system
+                    time.sleep(0.1)
+                        
+                except Exception as e:
+                    logger.error(f"Error improving content for attraction {attraction.id}: {str(e)}")
+                    failed += 1
+                    continue
+            
+            # Final commit
+            db.session.commit()
+            
+            result = {
+                'total_processed': processed,
+                'successful': successful,
+                'failed': failed,
+                'field': field,
+                'style': style
+            }
+            
+            logger.info(f"Content improvement task completed: {result}")
+            return result
+            
+    except Exception as e:
+        logger.error(f"Error in improve_content_batch_task: {str(e)}")
+        raise
+
+
+@celery.task
+def cleanup_old_interactions_task(days=90):
+    """Background task to clean up old user interactions."""
+    try:
+        with app.app_context():
+            from app.models import UserInteraction
+            from datetime import datetime, timedelta
+            
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            # Count interactions to delete
+            old_interactions = UserInteraction.query.filter(
+                UserInteraction.created_at < cutoff_date
+            ).count()
+            
+            if old_interactions > 0:
+                # Delete old interactions
+                UserInteraction.query.filter(
+                    UserInteraction.created_at < cutoff_date
+                ).delete()
+                
+                db.session.commit()
+                
+                logger.info(f"Cleaned up {old_interactions} old user interactions (older than {days} days)")
+                return {'deleted_interactions': old_interactions}
+            else:
+                logger.info("No old interactions to clean up")
+                return {'deleted_interactions': 0}
+                
+    except Exception as e:
+        logger.error(f"Error in cleanup_old_interactions_task: {str(e)}")
+        raise
 
 
 if __name__ == '__main__':
