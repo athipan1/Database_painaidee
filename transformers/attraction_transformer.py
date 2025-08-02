@@ -6,12 +6,48 @@ import logging
 from typing import List, Dict, Any, Optional
 from app.models import Attraction
 from app.services.geocoding import get_geocoding_service
+from app.utils.geo import extract_province_from_address
+from app.utils.category import normalize_categories
 
 logger = logging.getLogger(__name__)
 
 
 class AttractionTransformer:
     """Transformer for attraction data from various sources."""
+    
+    def __init__(self):
+        """Initialize transformer with default settings."""
+        self.default_province = "กรุงเทพมหานคร"
+    
+    def transform(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """แปลงข้อมูลดิบให้อยู่ใน schema ที่ระบบใช้"""
+        return {
+            "title": raw_data.get("name") or "ชื่อไม่ระบุ",
+            "description": raw_data.get("description", "").strip() or "ไม่มีคำอธิบาย",
+            "province": extract_province_from_address(raw_data.get("formatted_address", "")) or self.default_province,
+            "latitude": float(raw_data["geometry"]["location"]["lat"]) if raw_data.get("geometry", {}).get("location", {}).get("lat") else None,
+            "longitude": float(raw_data["geometry"]["location"]["lng"]) if raw_data.get("geometry", {}).get("location", {}).get("lng") else None,
+            "category": normalize_categories(raw_data.get("types", [])) or "สถานที่ท่องเที่ยว",
+            "opening_hours": self.clean_opening_hours(raw_data.get("opening_hours")),
+            "contact_phone": raw_data.get("phone", None),
+        }
+
+    def clean_opening_hours(self, hours_data: Any) -> str:
+        """แปลงเวลาเปิด-ปิดให้อยู่ในรูปแบบสั้นและเข้าใจง่าย"""
+        if not hours_data:
+            return "ไม่ระบุเวลาเปิดทำการ"
+        # สมมุติว่าเป็น dict with weekday_text
+        if isinstance(hours_data, dict):
+            weekday_text = hours_data.get("weekday_text", [])
+            if isinstance(weekday_text, list):
+                return "; ".join(weekday_text)
+        # If it's already a string, return as is
+        if isinstance(hours_data, str):
+            return hours_data
+        # If it's a list, join it
+        if isinstance(hours_data, list):
+            return "; ".join(str(item) for item in hours_data)
+        return "ไม่ระบุเวลาเปิดทำการ"
     
     @staticmethod
     def transform_external_api_data(
