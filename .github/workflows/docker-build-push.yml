@@ -22,9 +22,9 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_USER: testuser
-          POSTGRES_DB: test_painaidee
+          POSTGRES_PASSWORD: Got0896177698
+          POSTGRES_USER: postgres
+          POSTGRES_DB: painaidee_db
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -68,7 +68,7 @@ jobs:
 
       - name: Set up environment variables
         run: |
-          echo "DATABASE_URL=postgresql://testuser:testpass@localhost:5432/test_painaidee" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://postgres:Got0896177698@localhost:5432/painaidee_db" >> $GITHUB_ENV
           echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
           echo "CELERY_BROKER_URL=redis://localhost:6379/0" >> $GITHUB_ENV
           echo "FLASK_ENV=testing" >> $GITHUB_ENV
@@ -78,7 +78,7 @@ jobs:
         run: |
           python -m pytest -v --cov=app --cov=tasks --cov-report=xml --cov-report=html --cov-report=term
         env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/test_painaidee
+          DATABASE_URL: postgresql://postgres:Got0896177698@localhost:5432/painaidee_db
           REDIS_URL: redis://localhost:6379/0
 
       - name: Upload coverage to Codecov
@@ -93,13 +93,13 @@ jobs:
         run: |
           python test_etl.py
         env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/test_painaidee
+          DATABASE_URL: postgresql://postgres:Got0896177698@localhost:5432/painaidee_db
 
       - name: Test new AI features
         run: |
           python test_new_features.py
         env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/test_painaidee
+          DATABASE_URL: postgresql://postgres:Got0896177698@localhost:5432/painaidee_db
 
       - name: Archive test results
         if: always()
