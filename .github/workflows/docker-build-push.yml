@@ -25,6 +25,8 @@ jobs:
           POSTGRES_PASSWORD: testpass
           POSTGRES_USER: testuser
           POSTGRES_DB: test_painaidee
+          # Ensure proper initialization
+          POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=peer"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -35,17 +37,32 @@ jobs:
       
       redis:
         image: redis:7-alpine
+        env:
+          # Enable Redis memory overcommit to prevent background save failures
+          REDIS_ARGS: "--save 60 1000 --appendonly yes"
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --sysctl vm.overcommit_memory=1
         ports:
           - 6379:6379
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Configure system for Redis
+        run: |
+          # Configure memory overcommit for Redis (fix Redis warnings)
+          echo "Configuring system for Redis memory overcommit"
+          sudo sysctl vm.overcommit_memory=1 || echo "Could not set vm.overcommit_memory, continuing..."
+
+      - name: Install PostgreSQL client tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
@@ -73,6 +90,24 @@ jobs:
           echo "CELERY_BROKER_URL=redis://localhost:6379/0" >> $GITHUB_ENV
           echo "FLASK_ENV=testing" >> $GITHUB_ENV
           echo "AI_PROCESSING_ENABLED=false" >> $GITHUB_ENV
+
+      - name: Wait for services and verify database connection
+        run: |
+          # Wait for PostgreSQL to be ready
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U testuser; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+          
+          # Test database connection
+          PGPASSWORD=testpass psql -h localhost -U testuser -d test_painaidee -c "SELECT version();" || {
+            echo "Database connection failed, attempting to create database if needed"
+            PGPASSWORD=testpass createdb -h localhost -U testuser test_painaidee || echo "Database might already exist"
+          }
 
       - name: Run tests with coverage
         run: |

@@ -18,5 +18,9 @@ pytest-mock>=3.6.0,<4.0.0
 # For basic functionality, only these are needed:
 # scikit-learn>=1.0.0  # Optional - fallback methods available
 # numpy>=1.20.0  # Usually available in system
-matplotlib>=3.5.0
-seaborn>=0.11.0
+matplotlib>=3.5.0,<3.11.0
+seaborn>=0.11.0,<0.14.0
+# Fix potential numpy version conflicts
+numpy>=1.20.0,<2.0.0
+# Pin pandas to avoid compatibility issues with numpy
+pandas>=1.5.0,<2.2.0
