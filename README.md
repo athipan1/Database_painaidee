@@ -10,10 +10,14 @@
 
 🚀 A comprehensive Flask backend application for managing Thai attraction data with PostgreSQL, Celery, Redis, and AI-powered features. Perfect for tourism applications, travel platforms, and location-based services.
 
+### 🚀 Try it now:
+[![Deploy on HF Spaces](https://huggingface.co/datasets/huggingface/badges/raw/main/deploy-to-spaces-md.svg)](https://huggingface.co/spaces/new?template=athipan1/Database_painaidee) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/athipan1/Database_painaidee/blob/main/Database_Painaidee_Colab.ipynb)
+
 ## Table of Contents
 - [About This Project](#about-this-project)
 - [Features](#features) 
 - [Prerequisites](#prerequisites)
+- [🚀 Quick Deployment Options](#-quick-deployment-options)
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [API Endpoints](#api-endpoints)
@@ -122,6 +126,53 @@ Before running this application, ensure you have:
 Optional for enhanced features:
 - **Google Geocoding API Key** (for location services)
 - **nginx** (for production load balancing)
+
+## 🚀 Quick Deployment Options
+
+Choose your preferred deployment method to get started quickly:
+
+### 🤗 Deploy on Hugging Face Spaces (Permanent)
+Deploy a permanent demo version with web interface:
+
+[![Deploy on HF Spaces](https://huggingface.co/datasets/huggingface/badges/raw/main/deploy-to-spaces-md.svg)](https://huggingface.co/spaces/new?template=athipan1/Database_painaidee)
+
+**Features:**
+- 🌐 **Permanent public access** - Available 24/7
+- 🖥️ **Web interface** with Gradio
+- 🔍 **Interactive search** for Thai attractions
+- 📱 **Mobile-friendly** responsive design
+- 🆓 **Free hosting** on Hugging Face infrastructure
+
+**Steps to deploy:**
+1. Click the "Deploy to Spaces" button above
+2. Sign in to your Hugging Face account
+3. Name your Space and set it to public
+4. The app will automatically build and deploy
+5. Access your live demo at `https://huggingface.co/spaces/[your-username]/[space-name]`
+
+### 📓 Run on Google Colab with ngrok (Temporary)
+Run the full API temporarily with public access:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/athipan1/Database_painaidee/blob/main/Database_Painaidee_Colab.ipynb)
+
+**Features:**
+- ⚡ **Full API functionality** - All endpoints available
+- 🌐 **Public access** via ngrok tunnel
+- 🗃️ **Complete database** with PostgreSQL
+- 🔄 **Background tasks** with Celery + Redis
+- 📊 **Real-time dashboard** included
+- 🧪 **Perfect for testing** and development
+
+**Steps to run:**
+1. Click "Open in Colab" button above
+2. Run all cells in sequence (Runtime → Run all)
+3. Get your public ngrok URL from the output
+4. Access the API immediately at the provided URL
+5. Use the dashboard at `[ngrok-url]/api/dashboard/`
+
+**Note:** Colab deployment is temporary and will end when the session closes.
+
+---
 
 ## Quick Start
 
