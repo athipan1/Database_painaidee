@@ -6,6 +6,7 @@ from typing import Dict, Any
 from extractors.external_api import ExternalAPIExtractor
 from extractors.tourism_thailand import TourismThailandExtractor
 from extractors.opentripmap import OpenTripMapExtractor
+from extractors.tat_csv import TATCSVExtractor
 from transformers.attraction_transformer import AttractionTransformer
 from loaders.attraction_loader import AttractionLoader
 
@@ -176,4 +177,50 @@ class ETLOrchestrator:
             
         except Exception as e:
             logger.error(f"OpenTripMap ETL process failed: {str(e)}")
+            raise
+    
+    @staticmethod
+    def run_tat_csv_etl(
+        csv_url: str, 
+        timeout: int = 30,
+        enable_geocoding: bool = False,
+        google_api_key: str = None
+    ) -> Dict[str, Any]:
+        """
+        Run ETL process for TAT Open Data CSV.
+        
+        Args:
+            csv_url: The TAT CSV download URL
+            timeout: Request timeout in seconds  
+            enable_geocoding: Whether to attempt geocoding for missing coordinates
+            google_api_key: Google API key for geocoding (optional)
+            
+        Returns:
+            Dictionary with ETL results
+        """
+        logger.info("Starting ETL process for TAT CSV data")
+        logger.info(f"CSV URL: {csv_url}")
+        logger.info(f"Geocoding enabled: {enable_geocoding}")
+        
+        try:
+            # Extract
+            extractor = TATCSVExtractor(csv_url, timeout)
+            raw_data = extractor.extract()
+            
+            # Transform
+            attractions = AttractionTransformer.transform_tat_csv_data(
+                raw_data, 
+                enable_geocoding=enable_geocoding,
+                google_api_key=google_api_key
+            )
+            
+            # Load
+            loader = AttractionLoader()
+            result = loader.load_attractions(attractions)
+            
+            logger.info(f"TAT CSV ETL process completed: {result}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"TAT CSV ETL process failed: {str(e)}")
             raise

@@ -109,6 +109,78 @@ def fetch_attractions_task(self):
         raise
 
 
+@celery.task(bind=True)
+def fetch_tat_attractions_task(self, csv_url=None, enable_geocoding=False):
+    """Background task to fetch TAT Open Data attractions from CSV using ETL pipeline."""
+    start_time = time.time()
+    
+    try:
+        with app.app_context():
+            # Use provided URL or default TAT Open Data URL
+            if not csv_url:
+                csv_url = "https://opendata.tourismthailand.org/data/attractions.csv"
+            
+            # Get configuration
+            timeout = app.config.get('API_TIMEOUT', 60)
+            auto_backup = app.config.get('AUTO_BACKUP_BEFORE_SYNC', True)
+            google_api_key = app.config.get('GOOGLE_GEOCODING_API_KEY') if enable_geocoding else None
+            
+            logger.info(f"Starting TAT CSV ETL task from URL: {csv_url}")
+            
+            # Create pre-sync backup if enabled
+            if auto_backup:
+                logger.info("Creating pre-sync backup...")
+                backup_service = get_backup_service(app.config['SQLALCHEMY_DATABASE_URI'])
+                if backup_service:
+                    backup_path = backup_service.create_pre_sync_backup()
+                    if backup_path:
+                        logger.info(f"Pre-sync backup created: {backup_path}")
+                    else:
+                        logger.warning("Failed to create pre-sync backup, continuing with sync...")
+            
+            # Run TAT CSV ETL process
+            result = ETLOrchestrator.run_tat_csv_etl(
+                csv_url=csv_url,
+                timeout=timeout,
+                enable_geocoding=enable_geocoding,
+                google_api_key=google_api_key
+            )
+            
+            # Record sync statistics
+            processing_time = time.time() - start_time
+            total_processed = result.get('total_processed', 0)
+            total_saved = result.get('saved', 0) + result.get('updated', 0)
+            total_skipped = result.get('skipped', 0)
+            total_errors = result.get('errors', 0)
+            success_rate = (total_saved / total_processed * 100) if total_processed > 0 else 0
+            
+            # Save sync statistics
+            sync_stat = SyncStatistics(
+                sync_date=date.today(),
+                total_processed=total_processed,
+                total_saved=total_saved,
+                total_skipped=total_skipped,
+                total_errors=total_errors,
+                success_rate=success_rate,
+                processing_time_seconds=processing_time,
+                api_source="TAT Open Data CSV"
+            )
+            db.session.add(sync_stat)
+            db.session.commit()
+            
+            logger.info(f"TAT CSV ETL task completed in {processing_time:.2f} seconds")
+            logger.info(f"Results: {total_processed} processed, {total_saved} saved, {total_skipped} skipped, {total_errors} errors")
+            
+            return result
+            
+    except requests.RequestException as e:
+        logger.error(f"Error in TAT CSV ETL process: {str(e)}")
+        raise self.retry(countdown=300, max_retries=2)  # Wait 5 minutes, try 2 more times
+    except Exception as e:
+        logger.error(f"Error in fetch_tat_attractions_task: {str(e)}")
+        raise
+
+
 @celery.task
 def geocode_attractions_task():
     """Background task to geocode attractions that don't have coordinates."""

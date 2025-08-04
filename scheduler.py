@@ -42,6 +42,12 @@ celery_app.conf.update(
             'task': 'tasks.cleanup_old_versions_task',
             'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Run at 3:00 AM every Sunday
         },
+        # TAT Open Data ETL - weekly sync
+        'fetch-tat-attractions-weekly': {
+            'task': 'tasks.fetch_tat_attractions_task',
+            'schedule': crontab(hour=1, minute=30, day_of_week=1),  # Run at 1:30 AM every Monday
+            'kwargs': {'enable_geocoding': False}  # Disable geocoding for scheduled runs to avoid API limits
+        },
         # AI-related scheduled tasks
         'extract-keywords-daily': {
             'task': 'tasks.extract_keywords_batch_task',

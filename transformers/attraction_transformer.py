@@ -183,6 +183,107 @@ class AttractionTransformer:
         return attractions
     
     @staticmethod
+    def transform_tat_csv_data(
+        raw_data: List[Dict[str, Any]], 
+        enable_geocoding: bool = False,
+        google_api_key: str = None
+    ) -> List[Attraction]:
+        """
+        Transform raw TAT CSV data into Attraction objects with optional geocoding.
+        
+        Args:
+            raw_data: List of raw CSV data items from TAT Open Data
+            enable_geocoding: Whether to attempt geocoding for items without coordinates
+            google_api_key: Google API key for geocoding (optional)
+            
+        Returns:
+            List of Attraction objects ready for database insertion
+        """
+        logger.info(f"Transforming {len(raw_data)} TAT CSV items (geocoding: {enable_geocoding})")
+        
+        geocoding_service = None
+        if enable_geocoding:
+            geocoding_service = get_geocoding_service(google_api_key)
+        
+        attractions = []
+        geocoded_count = 0
+        
+        for idx, item in enumerate(raw_data):
+            try:
+                # Convert latitude/longitude strings to float if present
+                latitude = None
+                longitude = None
+                
+                # Try different field names for coordinates
+                lat_fields = ['latitude', 'ละติจูด', 'lat', 'y']
+                lng_fields = ['longitude', 'ลองจิจูด', 'lng', 'lon', 'x']
+                
+                for field in lat_fields:
+                    if field in item and item[field] is not None:
+                        try:
+                            latitude = float(str(item[field]).replace(',', '.'))
+                            break
+                        except (ValueError, TypeError):
+                            continue
+                
+                for field in lng_fields:
+                    if field in item and item[field] is not None:
+                        try:
+                            longitude = float(str(item[field]).replace(',', '.'))
+                            break
+                        except (ValueError, TypeError):
+                            continue
+                
+                # Create transformed data for TAT CSV
+                transformed_item = {
+                    'name': item.get('name') or item.get('ชื่อสถานที่') or item.get('title'),
+                    'description': item.get('description') or item.get('รายละเอียด') or item.get('detail'),
+                    'address': item.get('address') or item.get('ที่อยู่') or item.get('location'),
+                    'district': item.get('district') or item.get('อำเภอ') or item.get('amphoe'),
+                    'province': item.get('province') or item.get('จังหวัด') or item.get('changwat'),
+                    'category': item.get('category') or item.get('ประเภท') or item.get('type'),
+                    'opening_hours': item.get('opening_hours') or item.get('เวลาเปิด') or item.get('hours'),
+                    'entrance_fee': item.get('entrance_fee') or item.get('ค่าเข้าชม') or item.get('fee'),
+                    'contact_phone': item.get('contact_phone') or item.get('โทรศัพท์') or item.get('phone'),
+                    'latitude': latitude,
+                    'longitude': longitude,
+                    'source': 'TAT Open Data'
+                }
+                
+                # Use index as external_id since CSV might not have unique IDs
+                attraction = Attraction.create_from_tat_data(transformed_item, external_id=idx + 1)
+                
+                # Attempt geocoding if enabled and coordinates are missing
+                if (enable_geocoding and geocoding_service and 
+                    attraction.latitude is None and attraction.longitude is None and 
+                    attraction.name):
+                    
+                    try:
+                        location_data = geocoding_service.geocode(
+                            attraction.name, 
+                            attraction.province
+                        )
+                        
+                        if location_data:
+                            attraction.latitude = location_data['latitude']
+                            attraction.longitude = location_data['longitude']
+                            attraction.geocoded = True
+                            geocoded_count += 1
+                            logger.debug(f"Geocoded TAT attraction: {attraction.name}")
+                        
+                    except Exception as geo_error:
+                        logger.warning(f"Geocoding failed for {attraction.name}: {geo_error}")
+                
+                attractions.append(attraction)
+                
+            except Exception as e:
+                logger.warning(f"Failed to transform TAT CSV item {idx}: {e}")
+                continue
+        
+        logger.info(f"Successfully transformed {len(attractions)} TAT CSV attractions (geocoded: {geocoded_count})")
+        return attractions
+    
+    @staticmethod
     def transform_opentripmap_data(
         raw_data: List[Dict[str, Any]], 
         enable_geocoding: bool = False,

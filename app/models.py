@@ -13,6 +13,16 @@ class Attraction(db.Model):
     title = db.Column(db.String(200), nullable=False)
     body = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, nullable=True)
+    # Tourism-specific fields for TAT data
+    name = db.Column(db.String(200), nullable=True)  # Alternative to title for tourism data
+    description = db.Column(db.Text, nullable=True)  # Alternative to body for tourism data
+    address = db.Column(db.Text, nullable=True)
+    district = db.Column(db.String(100), nullable=True)
+    category = db.Column(db.String(100), nullable=True)
+    opening_hours = db.Column(db.Text, nullable=True)
+    entrance_fee = db.Column(db.Text, nullable=True)
+    contact_phone = db.Column(db.String(50), nullable=True)
+    source = db.Column(db.String(100), nullable=True)  # Data source identifier
     # Geocoding fields
     province = db.Column(db.String(100), nullable=True)
     latitude = db.Column(db.Float, nullable=True)
@@ -37,6 +47,15 @@ class Attraction(db.Model):
             'title': self.title,
             'body': self.body,
             'user_id': self.user_id,
+            'name': self.name,
+            'description': self.description,
+            'address': self.address,
+            'district': self.district,
+            'category': self.category,
+            'opening_hours': self.opening_hours,
+            'entrance_fee': self.entrance_fee,
+            'contact_phone': self.contact_phone,
+            'source': self.source,
             'province': self.province,
             'latitude': self.latitude,
             'longitude': self.longitude,
@@ -61,6 +80,28 @@ class Attraction(db.Model):
             latitude=data.get('latitude'),
             longitude=data.get('longitude'),
             geocoded=data.get('geocoded', False)
+        )
+
+    @classmethod
+    def create_from_tat_data(cls, data, external_id):
+        """Create attraction from TAT CSV data."""
+        return cls(
+            external_id=external_id,
+            name=data.get('name') or data.get('ชื่อสถานที่'),
+            title=data.get('name') or data.get('ชื่อสถานที่'),  # Keep title for compatibility
+            description=data.get('description') or data.get('รายละเอียด'),
+            body=data.get('description') or data.get('รายละเอียด'),  # Keep body for compatibility
+            address=data.get('address') or data.get('ที่อยู่'),
+            district=data.get('district') or data.get('อำเภอ'),
+            province=data.get('province') or data.get('จังหวัด'),
+            category=data.get('category') or data.get('ประเภท'),
+            opening_hours=data.get('opening_hours') or data.get('เวลาเปิด'),
+            entrance_fee=data.get('entrance_fee') or data.get('ค่าเข้าชม'),
+            contact_phone=data.get('contact_phone') or data.get('โทรศัพท์'),
+            latitude=data.get('latitude') or data.get('ละติจูด'),
+            longitude=data.get('longitude') or data.get('ลองจิจูด'),
+            source=data.get('source', 'TAT Open Data'),
+            geocoded=bool(data.get('latitude') or data.get('ละติจูด'))
         )
 
 
