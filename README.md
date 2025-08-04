@@ -150,27 +150,66 @@ Deploy a permanent demo version with web interface:
 4. The app will automatically build and deploy
 5. Access your live demo at `https://huggingface.co/spaces/[your-username]/[space-name]`
 
-### 📓 Run on Google Colab with ngrok (Temporary)
-Run the full API temporarily with public access:
+### 📓 Run on Google Colab with Real Tourism Data (Temporary)
+Run the full API temporarily with public access and real Thai tourism data:
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/athipan1/Database_painaidee/blob/main/Database_Painaidee_Colab.ipynb)
 
 **Features:**
 - ⚡ **Full API functionality** - All endpoints available
+- 🏛️ **Real Thai tourism data** - Loaded from Tourism Authority of Thailand (TAT)
 - 🌐 **Public access** via ngrok tunnel
 - 🗃️ **Complete database** with PostgreSQL
 - 🔄 **Background tasks** with Celery + Redis
 - 📊 **Real-time dashboard** included
 - 🧪 **Perfect for testing** and development
 
+**What happens when you run it:**
+1. **Database Setup**: PostgreSQL and Redis are installed and configured
+2. **Data Loading**: Real Thai attraction data is loaded from TAT Open Data CSV
+3. **API Launch**: Flask API starts with all features enabled
+4. **Public Access**: ngrok creates a public URL for immediate access
+5. **Ready to Use**: Dashboard and API endpoints available instantly
+
 **Steps to run:**
 1. Click "Open in Colab" button above
 2. Run all cells in sequence (Runtime → Run all)
 3. Get your public ngrok URL from the output
-4. Access the API immediately at the provided URL
-5. Use the dashboard at `[ngrok-url]/api/dashboard/`
+4. **Database is automatically populated** with real Thai tourism data
+5. Access the API immediately at the provided URL
+6. Use the dashboard at `[ngrok-url]/api/dashboard/`
+
+**Sample endpoints you can try immediately:**
+- `[your-ngrok-url]/api/attractions` - Browse loaded Thai attractions
+- `[your-ngrok-url]/api/dashboard/` - Web dashboard interface
+- `[your-ngrok-url]/api/health` - System health check
 
 **Note:** Colab deployment is temporary and will end when the session closes.
+
+---
+
+## 📊 Data Sources
+
+This application supports multiple data sources for Thai tourism information:
+
+### 🏛️ TAT Open Data (Primary Source)
+- **Source**: Tourism Authority of Thailand Open Data Portal
+- **URL**: `https://opendata.tourismthailand.org/data/attractions.csv`
+- **Content**: Official Thai attractions with descriptions, locations, categories
+- **Format**: CSV with comprehensive attraction details
+- **Usage**: Automatically loaded in Colab deployment
+
+### 🌐 External API (Testing/Demo)
+- **Source**: Configurable external API endpoint
+- **Default**: JSONPlaceholder (test data for development)
+- **Content**: Sample data for testing API functionality
+- **Usage**: Fallback when TAT data is unavailable
+
+### 🔄 Data Loading Options
+- **Automatic**: Colab notebook loads real TAT data by default
+- **Manual Sync**: Use `/api/attractions/sync/tat` endpoint for TAT data
+- **Test Data**: Use `/api/attractions/sync` for external API test data
+- **Custom Sources**: Configure your own data sources via environment variables
 
 ---
 
