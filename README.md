@@ -186,6 +186,35 @@ Run the full API temporarily with public access and real Thai tourism data:
 
 **Note:** Colab deployment is temporary and will end when the session closes.
 
+### 🚀 Deploy This Project on Vercel
+
+Click the button below to deploy your own copy instantly on [Vercel](https://vercel.com):
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/athipan1/Database_painaidee)
+
+---
+
+#### 🛠️ Environment Setup
+
+After deploying, make sure to set the following environment variables:
+
+- `DATABASE_URL`: PostgreSQL connection string (required)
+- `SECRET_KEY`: Flask secret key for security
+- `REDIS_URL`: Redis connection string for background tasks
+- `CELERY_BROKER_URL`: Celery broker URL (usually same as REDIS_URL)
+
+You can set these in the Vercel dashboard under **Settings > Environment Variables**.
+
+---
+
+#### 🧪 Automatic Testing (Optional)
+
+This repo includes automatic schema validation using Pydantic and full endpoint testing via `requests`. You can run:
+
+```bash
+python tests/run_all_tests.py
+```
+
 ---
 
 ## 📊 Data Sources
