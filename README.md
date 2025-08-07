@@ -11,7 +11,7 @@
 🚀 A comprehensive Flask backend application for managing Thai attraction data with PostgreSQL, Celery, Redis, and AI-powered features. Perfect for tourism applications, travel platforms, and location-based services.
 
 ### 🚀 Try it now:
-[![Deploy on HF Spaces](https://huggingface.co/datasets/huggingface/badges/raw/main/deploy-to-spaces-md.svg)](https://huggingface.co/spaces/new?template=athipan1/Database_painaidee) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/athipan1/Database_painaidee/blob/main/Database_Painaidee_Colab.ipynb)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fathipan1%2FDatabase_painaidee) [![Deploy on HF Spaces](https://huggingface.co/datasets/huggingface/badges/raw/main/deploy-to-spaces-md.svg)](https://huggingface.co/spaces/new?template=athipan1/Database_painaidee) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/athipan1/Database_painaidee/blob/main/Database_Painaidee_Colab.ipynb)
 
 ## Table of Contents
 - [About This Project](#about-this-project)
@@ -131,7 +131,50 @@ Optional for enhanced features:
 
 Choose your preferred deployment method to get started quickly:
 
-### 🤗 Deploy on Hugging Face Spaces (Permanent)
+### Deploy บน Vercel 🚀
+
+Deploy to production instantly with zero configuration:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fathipan1%2FDatabase_painaidee)
+
+**Features:**
+- ⚡ **Instant deployment** - One-click deploy with automatic builds
+- 🌐 **Global CDN** - Fast worldwide access with edge optimization
+- 🔄 **Auto-scaling** - Handles traffic spikes automatically
+- 🔒 **HTTPS included** - SSL certificates managed automatically
+- 🚀 **Serverless** - No server management required
+
+**Required Environment Variables:**
+Set these in your Vercel dashboard after deployment:
+
+```env
+# Required for Flask application
+SECRET_KEY=your-secure-secret-key-here
+FLASK_ENV=production
+
+# Database Configuration
+DATABASE_URL=postgresql://user:password@host:port/database
+# Or use Vercel's PostgreSQL addon
+
+# Optional - AI Features
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Optional - Geocoding
+GOOGLE_GEOCODING_API_KEY=your-google-api-key-here
+
+# Optional - External Data Sources
+EXTERNAL_API_URL=https://opendata.tourismthailand.org/data/attractions.csv
+```
+
+**Setup Steps:**
+1. Click "Deploy with Vercel" button above
+2. Connect your GitHub account and import the repository
+3. Configure environment variables in Vercel dashboard
+4. Your API will be live at `https://your-app-name.vercel.app`
+5. Add a PostgreSQL database via Vercel addons or external provider
+
+### Deploy บน Hugging Face Spaces 🤗
+
 Deploy a permanent demo version with web interface:
 
 [![Deploy on HF Spaces](https://huggingface.co/datasets/huggingface/badges/raw/main/deploy-to-spaces-md.svg)](https://huggingface.co/spaces/new?template=athipan1/Database_painaidee)
@@ -143,14 +186,73 @@ Deploy a permanent demo version with web interface:
 - 📱 **Mobile-friendly** responsive design
 - 🆓 **Free hosting** on Hugging Face infrastructure
 
-**Steps to deploy:**
-1. Click the "Deploy to Spaces" button above
+**Repository Structure for HF Spaces:**
+```
+your-space/
+├── app.py                 # Main application entry point
+├── requirements.txt       # Python dependencies
+├── README.md             # Space documentation
+├── app/                  # Flask application code
+├── static/               # Static files
+└── templates/            # HTML templates
+```
+
+**Key Configuration Files:**
+
+**`requirements.txt` for HF Spaces:**
+```txt
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+psycopg2-binary==2.9.7
+requests==2.31.0
+python-dotenv==1.0.0
+gradio>=3.0.0
+```
+
+**`app.py` for HF Spaces:**
+```python
+import gradio as gr
+import os
+from app import create_app
+
+# Create Flask app
+flask_app = create_app()
+
+# Gradio interface
+def search_attractions(query):
+    # Your search logic here
+    return f"Search results for: {query}"
+
+# Create Gradio interface
+interface = gr.Interface(
+    fn=search_attractions,
+    inputs="text",
+    outputs="text",
+    title="Database Painaidee - Thai Attractions",
+    description="Search Thai tourism attractions"
+)
+
+if __name__ == "__main__":
+    interface.launch()
+```
+
+**Setup Steps:**
+1. Click "Deploy to Spaces" button above
 2. Sign in to your Hugging Face account
 3. Name your Space and set it to public
-4. The app will automatically build and deploy
-5. Access your live demo at `https://huggingface.co/spaces/[your-username]/[space-name]`
+4. Upload or sync your repository files
+5. Configure the Space settings (Python, Gradio)
+6. The app will automatically build and deploy
+7. Access your live demo at `https://huggingface.co/spaces/[your-username]/[space-name]`
 
-### 📓 Run on Google Colab with Real Tourism Data (Temporary)
+**Special Notes:**
+- Use SQLite for database in HF Spaces (simpler than PostgreSQL)
+- Configure environment variables in Space settings
+- Consider using Hugging Face Datasets for data storage
+- Add `huggingface_hub` to requirements for enhanced features
+
+### ทดลองใช้งานบน Google Colab ⚗️
+
 Run the full API temporarily with public access and real Thai tourism data:
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/athipan1/Database_painaidee/blob/main/Database_Painaidee_Colab.ipynb)
@@ -185,6 +287,86 @@ Run the full API temporarily with public access and real Thai tourism data:
 - `[your-ngrok-url]/api/health` - System health check
 
 **Note:** Colab deployment is temporary and will end when the session closes.
+
+## 🧪 ทดลอง API ทั้งหมดใน Google Colab
+
+Test all API endpoints with comprehensive examples and real data:
+
+[![Run API Tests](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/athipan1/Database_painaidee/blob/main/tests/test_all_apis.ipynb)
+
+**What you'll get:**
+- 🚀 **Complete API setup** - Full deployment with one click
+- 🧪 **All endpoints tested** - Comprehensive API testing examples
+- 🗣️ **Conversational AI demo** - Test `/api/talk` with real queries
+- 🎤 **Voice features** - Voice input/output testing (if supported)
+- 📊 **Interactive examples** - Real tourism data and AI responses
+
+**Setup Code (automatically included):**
+```python
+# Clone repository and install dependencies
+!git clone https://github.com/athipan1/Database_painaidee.git
+%cd Database_painaidee
+!pip install -r requirements.txt
+
+# Setup database and start API
+!python init_db.py
+from pyngrok import ngrok
+public_url = ngrok.connect(5000)
+print(f"🌐 API URL: {public_url}")
+```
+
+**Example API Usage with `/api/talk`:**
+```python
+import requests
+
+# Test conversational AI
+talk_data = {
+    "message": "แนะนำสถานที่ท่องเที่ยวในกรุงเทพฯ",
+    "user_id": "demo_user"
+}
+
+response = requests.post(f"{api_url}/api/talk", json=talk_data)
+result = response.json()
+
+print(f"AI Response: {result['response']}")
+print(f"Attractions: {len(result['attractions'])}")
+```
+
+**Sample Request & Response:**
+```json
+{
+  "request": {
+    "message": "ช่วยหาข้อมูลเกี่ยวกับวัดพระแก้ว",
+    "user_id": "tourist_123"
+  },
+  "response": {
+    "response": "วัดพระแก้วเป็นวัดที่สำคัญที่สุดในประเทศไทย...",
+    "attractions": [
+      {
+        "title": "วัดพระแก้ว กรุงเทพมหานคร",
+        "description": "วัดพระแก้วเป็นวัดที่สำคัญที่สุด...",
+        "location": "กรุงเทพฯ",
+        "coordinates": [13.7513, 100.4928]
+      }
+    ],
+    "conversation_id": "conv_123",
+    "processing_time": "1.23s"
+  }
+}
+```
+
+**Voice Input/Output Demo (if supported):**
+- 🎤 **Speech-to-text** - Convert voice questions to text
+- 🔊 **Text-to-speech** - AI responses in voice format
+- 🗣️ **End-to-end voice** - Speak questions, hear answers
+
+**Features tested in notebook:**
+- ❤️ Health check and system status
+- 🏛️ Attractions database queries
+- 🤖 AI keyword extraction and recommendations
+- 📊 Behavior analytics and tracking
+- 🗣️ Conversational AI with Thai/English support
+- 📈 Dashboard statistics and visualization
 
 ---
 
